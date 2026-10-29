@@ -88,8 +88,9 @@ namespace Unscrew.Core.Tests
         [Test]
         public void Tap_CollectorCannotAccept_ReturnsFalse()
         {
-            var collector = new FakeCollector { AcceptOverride = false };
+            var collector = new FakeCollector();
             var s = TwoLayers(collector);
+            collector.AcceptOverride = false;
             Assert.IsFalse(s.CanTap(0));
             Assert.IsFalse(s.Tap(0, _events, _released));
             Assert.IsFalse(s.Board.IsRemoved(0));
@@ -136,20 +137,59 @@ namespace Unscrew.Core.Tests
         }
 
         [Test]
-        public void BufferFull_Loses_AndBlocksFurtherMoves()
+        public void BufferFull_NoAccessibleBoltMatchesBox_Loses_AndBlocksFurtherMoves()
         {
             var collector = new FakeCollector(bufferCapacity: 2);
             var s = TwoLayers(collector);
             s.Tap(0, _events, _released);
             Assert.AreEqual(SessionState.Playing, s.State);
             s.Tap(1, _events, _released);
+            // buffer full, only bolt 2 (color 1) accessible and no box takes color 1 -> out of moves
             Assert.AreEqual(SessionState.Lost, s.State);
 
-            collector.BoxColors.Add(1); // even if a box could take it, no moves while Lost
+            collector.BoxColors.Add(1); // even if a box could take it now, no moves while Lost
             Assert.IsFalse(s.CanTap(2));
             Assert.IsFalse(s.Tap(2, _events, _released));
             Assert.IsFalse(s.ForceRemove(2, _events, _released));
             Assert.AreEqual(2, s.MovesMade);
+
+            Assert.IsTrue(s.Revive(), "a move is available again (box of color 1)");
+            Assert.IsTrue(s.Tap(2, _events, _released));
+        }
+
+        [Test]
+        public void BufferFull_ButAccessibleBoltMatchesOpenBox_StaysPlaying()
+        {
+            var collector = new FakeCollector(bufferCapacity: 2);
+            collector.BoxColors.Add(1);
+            var s = TwoLayers(collector);
+            s.Tap(0, _events, _released);
+            s.Tap(1, _events, _released);
+            Assert.IsTrue(collector.IsBufferFull);
+            Assert.AreEqual(SessionState.Playing, s.State, "full buffer alone is not a loss");
+            Assert.IsTrue(s.HasAvailableMove());
+
+            Assert.IsFalse(s.CanTap(5), "blocked bolt is not a move");
+            Assert.IsTrue(s.CanTap(2));
+            Assert.IsTrue(s.Tap(2, _events, _released));
+            Assert.AreEqual(CollectEventType.BoltToBox, _events[_events.Count - 1].type);
+            CollectionAssert.AreEqual(new[] { 0 }, _released);
+            Assert.AreEqual(SessionState.Playing, s.State, "bolt 3 (color 1) is now accessible");
+
+            Assert.IsTrue(s.Tap(3, _events, _released));
+            Assert.AreEqual(SessionState.Lost, s.State, "only color 2 left accessible, buffer full");
+            Assert.IsFalse(s.HasAvailableMove());
+        }
+
+        [Test]
+        public void BufferFull_AfterForceRemove_StaysPlaying_IfBoxMatches()
+        {
+            var collector = new FakeCollector(bufferCapacity: 1);
+            collector.BoxColors.Add(0);
+            var s = TwoLayers(collector);
+            Assert.IsTrue(s.ForceRemove(5, _events, _released));
+            Assert.IsTrue(collector.IsBufferFull);
+            Assert.AreEqual(SessionState.Playing, s.State);
         }
 
         [Test]
@@ -163,7 +203,7 @@ namespace Unscrew.Core.Tests
         }
 
         [Test]
-        public void Revive_WhileBufferFull_Fails()
+        public void Revive_WithoutAvailableMove_Fails()
         {
             var collector = new FakeCollector(bufferCapacity: 1);
             var s = TwoLayers(collector);
@@ -179,7 +219,9 @@ namespace Unscrew.Core.Tests
             var collector = new FakeCollector(bufferCapacity: 1);
             var s = TwoLayers(collector);
             s.Tap(0, _events, _released);
-            collector.AddBufferSlot(_events);
+            Assert.AreEqual(SessionState.Lost, s.State);
+            collector.AddBufferSlot(_events); // ExtraSlot booster
+            Assert.IsTrue(s.HasAvailableMove());
             Assert.IsTrue(s.Revive());
             Assert.AreEqual(SessionState.Playing, s.State);
             Assert.IsTrue(s.Tap(1, _events, _released));
@@ -221,8 +263,9 @@ namespace Unscrew.Core.Tests
         [Test]
         public void ForceRemove_CollectorCannotAccept_ReturnsFalse()
         {
-            var collector = new FakeCollector { AcceptOverride = false };
+            var collector = new FakeCollector();
             var s = TwoLayers(collector);
+            collector.AcceptOverride = false;
             Assert.IsFalse(s.ForceRemove(3, _events, _released));
             Assert.IsFalse(s.Board.IsRemoved(3));
         }
@@ -259,7 +302,7 @@ namespace Unscrew.Core.Tests
         }
 
         [Test]
-        public void DeadlockAtStart_IsLost_ButDrillAfterReviveResolvesIt()
+        public void DeadlockAtStart_IsLost_AndCannotBeRevived()
         {
             // two bolts blocking each other's parts, nothing accessible from the start.
             var def = TestLevels.Build(new[] { 0, 1 }, new[] { new[] { 1 }, new[] { 0 } });
@@ -268,11 +311,18 @@ namespace Unscrew.Core.Tests
             var s = new GameSession(def, Layout(0, 0), collector);
             Assert.AreEqual(SessionState.Lost, s.State);
 
-            Assert.IsTrue(s.Revive(), "buffer is not full, so revive is allowed");
-            Assert.IsTrue(s.ForceRemove(0, _events, _released));
-            Assert.AreEqual(SessionState.Playing, s.State);
-            Assert.IsTrue(s.Tap(1, _events, _released));
-            Assert.AreEqual(SessionState.Won, s.State);
+            collector.AddBufferSlot(_events);
+            Assert.IsFalse(s.Revive(), "no accessible bolt -> still no move, revive refused");
+            Assert.AreEqual(SessionState.Lost, s.State);
+        }
+
+        [Test]
+        public void Constructor_NoAvailableMove_IsLost()
+        {
+            var collector = new FakeCollector { AcceptOverride = false };
+            var s = TwoLayers(collector);
+            Assert.AreEqual(SessionState.Lost, s.State);
+            Assert.IsFalse(s.Revive());
         }
 
         [Test]
