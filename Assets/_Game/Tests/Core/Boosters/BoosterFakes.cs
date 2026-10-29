@@ -220,13 +220,21 @@ namespace Unscrew.Core.Tests
             _collector.Add(boltId, GetBoltColor(boltId), events);
             MovesMade++;
             if (_board.RemainingBolts == 0) State = SessionState.Won;
-            else if (_collector.IsBufferFull) State = SessionState.Lost;
+            else if (!HasAvailableMove()) State = SessionState.Lost;
+        }
+
+        /// <summary>Same out-of-moves rule as GameSession: an accessible bolt the collector can accept.</summary>
+        public bool HasAvailableMove()
+        {
+            for (int b = 0; b < Layout.boltColors.Length; b++)
+                if (_board.IsAccessible(b) && _collector.CanAccept(GetBoltColor(b))) return true;
+            return false;
         }
 
         public bool Revive()
         {
             ReviveCalls++;
-            if (State != SessionState.Lost || _collector.IsBufferFull) return false;
+            if (State != SessionState.Lost || !HasAvailableMove()) return false;
             State = SessionState.Playing;
             return true;
         }

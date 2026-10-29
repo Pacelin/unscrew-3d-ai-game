@@ -8,7 +8,8 @@ namespace Unscrew.Core
     /// ExtraSlot: Playing or Lost; adds a buffer hole and revives a lost session.
     /// Drill: Playing; force-removes the target bolt (blocking ignored).
     /// Magnet: Playing; fills the leftmost non-empty box with bolts of its color from the board
-    /// (accessible bolts first, then blocked ones, each group in ascending id order).
+    /// (picks accessible bolts first, then blocked ones, each group in ascending id order;
+    /// removes the picked blocked bolts first so the session cannot run out of moves mid-booster).
     /// </summary>
     public sealed class BoosterService : IBoosterService
     {
@@ -17,6 +18,8 @@ namespace Unscrew.Core
         // Reused scratch lists: no allocations per use.
         private readonly List<int> _accessible = new List<int>();
         private readonly List<int> _picked = new List<int>();
+        /// <summary>How many leading entries of _picked are accessible bolts (the rest are blocked).</summary>
+        private int _pickedAccessible;
 
         public BoosterService(IBoosterInventory inventory)
         {
@@ -100,9 +103,15 @@ namespace Unscrew.Core
         {
             if (!PickMagnetBolts(session)) return false;
 
+            // Out-of-moves rule: the session may sit in Playing with a full buffer only because some accessible bolt
+            // fits an open box. If Magnet took that bolt first, the session could turn Lost before the rest is removed.
+            // Removing blocked picks first keeps every move that existed before (accessibility only grows, the target box
+            // keeps room until the last bolt), so the session stays Playing until the box is complete.
             int removed = 0;
-            for (int i = 0; i < _picked.Count; i++)
+            int count = _picked.Count;
+            for (int k = 0; k < count; k++)
             {
+                int i = k < count - _pickedAccessible ? _pickedAccessible + k : k - (count - _pickedAccessible);
                 if (!session.ForceRemove(_picked[i], events, releasedParts)) break;
                 removed++;
             }
@@ -114,6 +123,7 @@ namespace Unscrew.Core
         private bool PickMagnetBolts(IGameSession session)
         {
             _picked.Clear();
+            _pickedAccessible = 0;
             if (session.State != SessionState.Playing) return false;
 
             var collector = session.Collector;
@@ -135,6 +145,7 @@ namespace Unscrew.Core
                 int bolt = _accessible[i];
                 if (session.GetBoltColor(bolt) == box.color) _picked.Add(bolt);
             }
+            _pickedAccessible = _picked.Count;
 
             int boltCount = board.Definition.bolts.Length;
             for (int bolt = 0; bolt < boltCount && _picked.Count < need; bolt++)

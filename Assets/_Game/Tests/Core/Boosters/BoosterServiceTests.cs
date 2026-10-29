@@ -230,7 +230,7 @@ namespace Unscrew.Core.Tests
         // ---------- Magnet ----------
 
         [Test]
-        public void Magnet_EmptyBox_TakesAccessibleFirstThenBlocked()
+        public void Magnet_EmptyBox_PicksAccessibleFirst_RemovesBlockedFirst()
         {
             var inventory = new BoosterFakeInventory(magnet: 1);
             var service = new BoosterService(inventory);
@@ -240,9 +240,40 @@ namespace Unscrew.Core.Tests
             Assert.IsTrue(service.CanUse(BoosterType.Magnet, session));
             Assert.IsTrue(service.TryUse(BoosterType.Magnet, session, -1, _events, _released));
 
-            CollectionAssert.AreEqual(new[] { 3, 4, 0 }, session.ForceRemoved);
+            CollectionAssert.AreEqual(new[] { 0, 3, 4 }, session.ForceRemoved, "picked {3,4,0}; blocked removed first");
             Assert.AreEqual(0, inventory.GetCount(BoosterType.Magnet));
             Assert.AreEqual(CollectEventType.BoxCompleted, _events[_events.Count - 1].type);
+        }
+
+        [Test]
+        public void Magnet_BufferFull_OnlyMoveIsPickedBolt_CompletesBoxWithoutLosingMidway()
+        {
+            var inventory = new BoosterFakeInventory(magnet: 1);
+            var service = new BoosterService(inventory);
+            // color 0: bolt 3 (free) and blocked 0,1. Free bolts 4,5 are color 1 (no box), buffer full.
+            var session = BlockedFirst(new[] { 0, 0, 1, 0, 1, 1 }, new[] { 0, 2 });
+            session.FakeCollector.FillBuffer(100, 7);
+            Assert.IsTrue(session.HasAvailableMove(), "full buffer, but bolt 3 fits box 0 -> still Playing");
+
+            Assert.IsTrue(service.TryUse(BoosterType.Magnet, session, -1, _events, _released));
+            CollectionAssert.AreEqual(new[] { 0, 1, 3 }, session.ForceRemoved, "taking 3 first would end in Lost after one bolt");
+            Assert.AreEqual(CollectEventType.BoxCompleted, _events[_events.Count - 1].type);
+            Assert.AreEqual(0, inventory.GetCount(BoosterType.Magnet));
+            Assert.AreEqual(SessionState.Lost, session.State, "afterwards only color-1 bolts are accessible: out of moves");
+        }
+
+        [Test]
+        public void ExtraSlot_LostOutOfMoves_RevivesThroughNewHole()
+        {
+            var service = new BoosterService(new BoosterFakeInventory(extraSlot: 1));
+            var session = BlockedFirst(new[] { 0, 0, 1, 0, 1, 1 }, new[] { 2, 3 });
+            session.FakeCollector.FillBuffer(100, 7);
+            session.State = SessionState.Lost;
+            Assert.IsFalse(session.HasAvailableMove());
+
+            Assert.IsTrue(service.TryUse(BoosterType.ExtraSlot, session, -1, _events, _released));
+            Assert.AreEqual(SessionState.Playing, session.State);
+            Assert.IsTrue(session.CanTap(3));
         }
 
         [Test]
@@ -286,7 +317,7 @@ namespace Unscrew.Core.Tests
             session.FakeCollector.SetFilled(0, 1);
 
             Assert.IsTrue(service.TryUse(BoosterType.Magnet, session, -1, _events, _released));
-            CollectionAssert.AreEqual(new[] { 2, 3 }, session.ForceRemoved);
+            CollectionAssert.AreEqual(new[] { 3, 2 }, session.ForceRemoved, "picked {2 (free), 3 (blocked)}; blocked removed first");
         }
 
         [Test]
