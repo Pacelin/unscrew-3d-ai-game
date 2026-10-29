@@ -39,14 +39,45 @@ namespace Unscrew.Core.Tests
         }
 
         [Test]
-        public void FullBuffer_Loses_AndBlocksFurtherTaps()
+        public void FullBuffer_WithMatchingBoxMove_IsNotLost()
         {
             var sim = new PuzzleSim(Flat6(), new[] { 1, 1, 0, 0, 0, 1 }, new[] { 0, 1 }, 1, 3, 2);
+            sim.Tap(0);
+            sim.Tap(1);
+            Assert.AreEqual(2, sim.BufferUsed);
+            Assert.IsFalse(sim.IsLost, "full buffer alone is not a loss: color-0 bolts fit the open box");
+            Assert.IsTrue(sim.HasAvailableMove());
+            Assert.IsFalse(sim.Tap(5), "color 1 has neither a box nor a free hole");
+            Assert.IsTrue(sim.Tap(2));
+            Assert.IsTrue(sim.Tap(3));
+            Assert.IsTrue(sim.Tap(4)); // box 0 completes, box 1 pulls both buffered bolts
+            Assert.AreEqual(0, sim.BufferUsed);
+            Assert.IsTrue(sim.Tap(5));
+            Assert.IsTrue(sim.IsWon);
+            Assert.AreEqual(2, sim.PeakBuffer);
+        }
+
+        [Test]
+        public void FullBuffer_NoAccessibleMatchingBolt_Loses_AndBlocksFurtherTaps()
+        {
+            // bolts 3..5 (color 0, matches the box) are blocked by part 0 = bolts 0..2 (color 1).
+            var sim = new PuzzleSim(TestLevels.TwoLayers(), new[] { 1, 1, 1, 0, 0, 0 }, new[] { 0, 1 }, 1, 3, 2);
             sim.Tap(0);
             Assert.IsFalse(sim.IsLost);
             sim.Tap(1);
             Assert.IsTrue(sim.IsLost);
+            Assert.IsFalse(sim.HasAvailableMove());
             Assert.IsFalse(sim.Tap(2));
+        }
+
+        [Test]
+        public void CyclicBlocking_IsLost_AfterLastFreeBolt()
+        {
+            // part 0 = bolt 0 (free); part 1 = bolts 1,2 blocked by part 2; part 2 = bolt 3 blocked by part 1.
+            var def = TestLevels.Build(new[] { 0, 1, 1, 2 }, new[] { null, new[] { 2 }, new[] { 2 }, new[] { 1 } });
+            var sim = new PuzzleSim(def, new[] { 0, 0, 0, 0 }, new[] { 0 }, 1, 3, 3);
+            Assert.IsTrue(sim.Tap(0));
+            Assert.IsTrue(sim.IsLost, "bolts left but none accessible");
         }
 
         [Test]

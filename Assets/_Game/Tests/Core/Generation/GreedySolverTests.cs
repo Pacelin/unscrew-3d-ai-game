@@ -51,6 +51,19 @@ namespace Unscrew.Core.Tests
         }
 
         [Test]
+        public void FillsBufferCompletely_WhenTheNextMoveGoesIntoABox()
+        {
+            // Box shows 0; color-0 bolts 2..4 (part 1) are blocked by part 0 = bolts 0,1 (color 1). Bolt 5 (color 1) free.
+            // Only line: buffer 0 and 1 (buffer becomes full = 2/2, not a loss), then 2..4 into the box, cascade, 5.
+            var owners = new[] { 0, 0, 1, 1, 1, 2 };
+            var blockers = new[] { null, null, new[] { 0 }, new[] { 0 }, new[] { 0 }, null };
+            var def = TestLevels.Build(owners, blockers);
+            var session = new FakeGameSession(def, Layout(new[] { 1, 1, 0, 0, 0, 1 }, new[] { 0, 1 }), 1, 3, 2);
+            Assert.IsTrue(new GreedySolver().Solve(session));
+            Assert.AreEqual(2, session.PeakBuffer);
+        }
+
+        [Test]
         public void UnsolvableLevel_ReturnsFalse()
         {
             // Box shows color 0 but all color-0 bolts are blocked by part 1 whose bolts are color 1; one hole only.

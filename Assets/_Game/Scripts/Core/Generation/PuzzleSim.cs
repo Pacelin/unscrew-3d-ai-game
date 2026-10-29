@@ -7,7 +7,8 @@ namespace Unscrew.Core
     /// Lightweight, cloneable model of one level in progress: bolt accessibility (via BoardRules) plus the
     /// box/buffer rules of ICollector, without events. Used by LayoutGenerator to prove solvability and by
     /// GreedySolver to look ahead. It intentionally does not depend on Board/Collect implementations.
-    /// Loss rules mirror GameSession: buffer becomes full while bolts remain.
+    /// Loss rule mirrors GameSession ("out of moves"): bolts remain, but no accessible bolt fits an open box of its
+    /// color or a free buffer hole. A full buffer alone is not a loss.
     /// </summary>
     public sealed class PuzzleSim
     {
@@ -130,7 +131,7 @@ namespace Unscrew.Core
         /// <summary>Highest buffer usage observed since the last Reset (after cascades).</summary>
         public int PeakBuffer => _peakBuffer;
         public bool IsWon => _remaining == 0;
-        /// <summary>Buffer became full while bolts remain (same rule as GameSession).</summary>
+        /// <summary>Out of moves while bolts remain (same rule as GameSession; a full buffer alone is not a loss).</summary>
         public bool IsLost => _lost;
 
         public int GetBoltColor(int boltId) => _boltColors[boltId];
@@ -263,8 +264,24 @@ namespace Unscrew.Core
                 if (_bufferUsed > _peakBuffer) _peakBuffer = _bufferUsed;
             }
 
-            if (_remaining > 0 && _bufferUsed >= _bufferCapacity) _lost = true;
+            if (_remaining > 0 && !HasAvailableMove()) _lost = true;
             return true;
+        }
+
+        /// <summary>
+        /// True when some accessible bolt can be tapped: its color has an open box, or the buffer has a free hole.
+        /// Allocation-free; ignores the lost flag.
+        /// </summary>
+        public bool HasAvailableMove()
+        {
+            bool bufferFree = _bufferUsed < _bufferCapacity;
+            for (int b = 0; b < _removed.Length; b++)
+            {
+                if (_removed[b]) continue;
+                if (!bufferFree && FindOpenBox(_boltColors[b]) < 0) continue; // cheap color check first
+                if (BoardRules.IsAccessible(_def, _removed, b)) return true;
+            }
+            return false;
         }
 
         private int FindOpenBox(int color)

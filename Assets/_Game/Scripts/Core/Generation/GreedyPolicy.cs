@@ -7,7 +7,7 @@ namespace Unscrew.Core
     /// so a generated layout that passes the generator's check is also passed by the bot.
     /// 1) A bolt that fits an open box (prefer the one completing a box, then the one unlocking more bolts).
     /// 2) Otherwise a buffer move chosen by one-move lookahead: play the candidate, then all box moves it enables,
-    ///    and prefer: not lost, fewer buffered bolts, color that comes earlier in the queue, more bolts removed,
+    ///    and prefer: not out of moves, fewer buffered bolts, color that comes earlier in the queue, more bolts removed,
     ///    more bolts unlocked (releasing parts).
     /// Not thread-safe: keeps scratch state between calls.
     /// </summary>
@@ -39,7 +39,7 @@ namespace Unscrew.Core
                 RunBoxMoves(_probe, _chainScratch);
                 if (_probe.IsWon) return b;
 
-                bool dead = _probe.IsLost || !HasAccessible(_probe);
+                bool dead = _probe.IsLost; // out of moves (full buffer with a matching box move is still alive)
                 int distance = sim.QueueDistance(sim.GetBoltColor(b));
                 if (distance > 999) distance = 999;
                 int removed = sim.RemainingBolts - _probe.RemainingBolts;
@@ -103,13 +103,6 @@ namespace Unscrew.Core
                 if (b < 0 || !sim.Tap(b)) return false;
             }
             return sim.IsWon;
-        }
-
-        private static bool HasAccessible(PuzzleSim sim)
-        {
-            for (int b = 0; b < sim.Definition.bolts.Length; b++)
-                if (!sim.IsRemoved(b) && sim.IsAccessible(b)) return true;
-            return false;
         }
     }
 }

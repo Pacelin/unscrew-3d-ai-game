@@ -66,8 +66,7 @@ namespace Unscrew.Core
 
         public bool Revive()
         {
-            if (State != SessionState.Lost || Collector.IsBufferFull) return false;
-            // Deliberately no deadlock re-check: after revive the player may resolve it with Drill.
+            if (State != SessionState.Lost || !HasAvailableMove()) return false;
             State = SessionState.Playing;
             return true;
         }
@@ -82,8 +81,19 @@ namespace Unscrew.Core
         private void UpdateState()
         {
             if (_board.RemainingBolts == 0) State = SessionState.Won;
-            else if (Collector.IsBufferFull) State = SessionState.Lost;
-            else if (!_board.HasAccessibleBolts()) State = SessionState.Lost; // cyclic blocking safety net
+            else if (!HasAvailableMove()) State = SessionState.Lost;
+        }
+
+        /// <summary>
+        /// Out-of-moves check: true when some accessible bolt's color can go into an open box or a free hole.
+        /// A full buffer alone is not a loss. Covers cyclic blocking too (no accessible bolts). Allocation-free.
+        /// </summary>
+        public bool HasAvailableMove()
+        {
+            var colors = Layout.boltColors;
+            for (int b = 0; b < colors.Length; b++)
+                if (_board.IsAccessible(b) && Collector.CanAccept(colors[b])) return true;
+            return false;
         }
 
         private static void CheckLists(List<CollectEvent> events, List<int> releasedParts)
