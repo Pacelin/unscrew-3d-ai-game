@@ -1,0 +1,85 @@
+{
+    "number": 1,
+    "parts": [
+        {
+            "id": 0,
+            "boltIds": [
+                0,
+                1,
+                2
+            ]
+        },
+        {
+            "id": 1,
+            "boltIds": [
+                3,
+                4
+            ]
+        },
+        {
+            "id": 2,
+            "boltIds": [
+                5,
+                6
+            ]
+        },
+        {
+            "id": 3,
+            "boltIds": [
+                7,
+                8
+            ]
+        }
+    ],
+    "bolts": [
+        {
+            "id": 0,
+            "ownerPartId": 0,
+            "blockingPartIds": []
+        },
+        {
+            "id": 1,
+            "ownerPartId": 0,
+            "blockingPartIds": []
+        },
+        {
+            "id": 2,
+            "ownerPartId": 0,
+            "blockingPartIds": []
+        },
+        {
+            "id": 3,
+            "ownerPartId": 1,
+            "blockingPartIds": []
+        },
+        {
+            "id": 4,
+            "ownerPartId": 1,
+            "blockingPartIds": []
+        },
+        {
+            "id": 5,
+            "ownerPartId": 2,
+            "blockingPartIds": []
+        },
+        {
+            "id": 6,
+            "ownerPartId": 2,
+            "blockingPartIds": []
+        },
+        {
+            "id": 7,
+            "ownerPartId": 3,
+            "blockingPartIds": []
+        },
+        {
+            "id": 8,
+            "ownerPartId": 3,
+            "blockingPartIds": []
+        }
+    ],
+    "allowedColors": [
+        1,
+        2
+    ]
+}

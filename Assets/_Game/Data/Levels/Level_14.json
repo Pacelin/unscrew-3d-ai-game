@@ -1,0 +1,858 @@
+{
+    "number": 14,
+    "parts": [
+        {
+            "id": 0,
+            "boltIds": [
+                0,
+                1
+            ]
+        },
+        {
+            "id": 1,
+            "boltIds": [
+                2,
+                3
+            ]
+        },
+        {
+            "id": 2,
+            "boltIds": [
+                4,
+                5
+            ]
+        },
+        {
+            "id": 3,
+            "boltIds": [
+                6
+            ]
+        },
+        {
+            "id": 4,
+            "boltIds": [
+                7
+            ]
+        },
+        {
+            "id": 5,
+            "boltIds": [
+                8
+            ]
+        },
+        {
+            "id": 6,
+            "boltIds": [
+                9
+            ]
+        },
+        {
+            "id": 7,
+            "boltIds": [
+                10,
+                11,
+                12
+            ]
+        },
+        {
+            "id": 8,
+            "boltIds": [
+                13,
+                14,
+                15
+            ]
+        },
+        {
+            "id": 9,
+            "boltIds": [
+                16,
+                17,
+                18
+            ]
+        },
+        {
+            "id": 10,
+            "boltIds": [
+                19,
+                20,
+                21
+            ]
+        },
+        {
+            "id": 11,
+            "boltIds": [
+                22,
+                23,
+                24
+            ]
+        },
+        {
+            "id": 12,
+            "boltIds": [
+                25,
+                26,
+                27
+            ]
+        },
+        {
+            "id": 13,
+            "boltIds": [
+                28,
+                29,
+                30
+            ]
+        },
+        {
+            "id": 14,
+            "boltIds": [
+                31,
+                32,
+                33
+            ]
+        },
+        {
+            "id": 15,
+            "boltIds": [
+                34,
+                35
+            ]
+        },
+        {
+            "id": 16,
+            "boltIds": [
+                36,
+                37
+            ]
+        },
+        {
+            "id": 17,
+            "boltIds": [
+                38
+            ]
+        },
+        {
+            "id": 18,
+            "boltIds": [
+                39
+            ]
+        },
+        {
+            "id": 19,
+            "boltIds": [
+                40
+            ]
+        },
+        {
+            "id": 20,
+            "boltIds": [
+                41
+            ]
+        },
+        {
+            "id": 21,
+            "boltIds": [
+                42
+            ]
+        },
+        {
+            "id": 22,
+            "boltIds": [
+                43
+            ]
+        },
+        {
+            "id": 23,
+            "boltIds": [
+                44
+            ]
+        },
+        {
+            "id": 24,
+            "boltIds": [
+                45
+            ]
+        },
+        {
+            "id": 25,
+            "boltIds": [
+                46
+            ]
+        },
+        {
+            "id": 26,
+            "boltIds": [
+                47
+            ]
+        },
+        {
+            "id": 27,
+            "boltIds": [
+                48
+            ]
+        },
+        {
+            "id": 28,
+            "boltIds": [
+                49
+            ]
+        },
+        {
+            "id": 29,
+            "boltIds": [
+                50
+            ]
+        },
+        {
+            "id": 30,
+            "boltIds": [
+                51
+            ]
+        },
+        {
+            "id": 31,
+            "boltIds": [
+                52
+            ]
+        },
+        {
+            "id": 32,
+            "boltIds": [
+                53
+            ]
+        },
+        {
+            "id": 33,
+            "boltIds": [
+                54,
+                55
+            ]
+        },
+        {
+            "id": 34,
+            "boltIds": [
+                56,
+                57
+            ]
+        },
+        {
+            "id": 35,
+            "boltIds": [
+                58,
+                59
+            ]
+        },
+        {
+            "id": 36,
+            "boltIds": [
+                60,
+                61,
+                62,
+                63
+            ]
+        },
+        {
+            "id": 37,
+            "boltIds": [
+                64,
+                65,
+                66
+            ]
+        },
+        {
+            "id": 38,
+            "boltIds": [
+                67,
+                68,
+                69
+            ]
+        },
+        {
+            "id": 39,
+            "boltIds": [
+                70,
+                71,
+                72
+            ]
+        },
+        {
+            "id": 40,
+            "boltIds": [
+                73,
+                74,
+                75
+            ]
+        },
+        {
+            "id": 41,
+            "boltIds": [
+                76,
+                77
+            ]
+        },
+        {
+            "id": 42,
+            "boltIds": [
+                78
+            ]
+        },
+        {
+            "id": 43,
+            "boltIds": [
+                79
+            ]
+        },
+        {
+            "id": 44,
+            "boltIds": [
+                80,
+                81
+            ]
+        },
+        {
+            "id": 45,
+            "boltIds": [
+                82,
+                83
+            ]
+        },
+        {
+            "id": 46,
+            "boltIds": [
+                84,
+                85,
+                86
+            ]
+        }
+    ],
+    "bolts": [
+        {
+            "id": 0,
+            "ownerPartId": 0,
+            "blockingPartIds": []
+        },
+        {
+            "id": 1,
+            "ownerPartId": 0,
+            "blockingPartIds": []
+        },
+        {
+            "id": 2,
+            "ownerPartId": 1,
+            "blockingPartIds": []
+        },
+        {
+            "id": 3,
+            "ownerPartId": 1,
+            "blockingPartIds": []
+        },
+        {
+            "id": 4,
+            "ownerPartId": 2,
+            "blockingPartIds": []
+        },
+        {
+            "id": 5,
+            "ownerPartId": 2,
+            "blockingPartIds": []
+        },
+        {
+            "id": 6,
+            "ownerPartId": 3,
+            "blockingPartIds": []
+        },
+        {
+            "id": 7,
+            "ownerPartId": 4,
+            "blockingPartIds": []
+        },
+        {
+            "id": 8,
+            "ownerPartId": 5,
+            "blockingPartIds": []
+        },
+        {
+            "id": 9,
+            "ownerPartId": 6,
+            "blockingPartIds": []
+        },
+        {
+            "id": 10,
+            "ownerPartId": 7,
+            "blockingPartIds": [
+                4
+            ]
+        },
+        {
+            "id": 11,
+            "ownerPartId": 7,
+            "blockingPartIds": [
+                3
+            ]
+        },
+        {
+            "id": 12,
+            "ownerPartId": 7,
+            "blockingPartIds": []
+        },
+        {
+            "id": 13,
+            "ownerPartId": 8,
+            "blockingPartIds": [
+                5
+            ]
+        },
+        {
+            "id": 14,
+            "ownerPartId": 8,
+            "blockingPartIds": [
+                6
+            ]
+        },
+        {
+            "id": 15,
+            "ownerPartId": 8,
+            "blockingPartIds": []
+        },
+        {
+            "id": 16,
+            "ownerPartId": 9,
+            "blockingPartIds": []
+        },
+        {
+            "id": 17,
+            "ownerPartId": 9,
+            "blockingPartIds": []
+        },
+        {
+            "id": 18,
+            "ownerPartId": 9,
+            "blockingPartIds": []
+        },
+        {
+            "id": 19,
+            "ownerPartId": 10,
+            "blockingPartIds": []
+        },
+        {
+            "id": 20,
+            "ownerPartId": 10,
+            "blockingPartIds": []
+        },
+        {
+            "id": 21,
+            "ownerPartId": 10,
+            "blockingPartIds": []
+        },
+        {
+            "id": 22,
+            "ownerPartId": 11,
+            "blockingPartIds": []
+        },
+        {
+            "id": 23,
+            "ownerPartId": 11,
+            "blockingPartIds": []
+        },
+        {
+            "id": 24,
+            "ownerPartId": 11,
+            "blockingPartIds": []
+        },
+        {
+            "id": 25,
+            "ownerPartId": 12,
+            "blockingPartIds": []
+        },
+        {
+            "id": 26,
+            "ownerPartId": 12,
+            "blockingPartIds": []
+        },
+        {
+            "id": 27,
+            "ownerPartId": 12,
+            "blockingPartIds": []
+        },
+        {
+            "id": 28,
+            "ownerPartId": 13,
+            "blockingPartIds": []
+        },
+        {
+            "id": 29,
+            "ownerPartId": 13,
+            "blockingPartIds": []
+        },
+        {
+            "id": 30,
+            "ownerPartId": 13,
+            "blockingPartIds": []
+        },
+        {
+            "id": 31,
+            "ownerPartId": 14,
+            "blockingPartIds": []
+        },
+        {
+            "id": 32,
+            "ownerPartId": 14,
+            "blockingPartIds": []
+        },
+        {
+            "id": 33,
+            "ownerPartId": 14,
+            "blockingPartIds": []
+        },
+        {
+            "id": 34,
+            "ownerPartId": 15,
+            "blockingPartIds": []
+        },
+        {
+            "id": 35,
+            "ownerPartId": 15,
+            "blockingPartIds": [
+                32,
+                35
+            ]
+        },
+        {
+            "id": 36,
+            "ownerPartId": 16,
+            "blockingPartIds": []
+        },
+        {
+            "id": 37,
+            "ownerPartId": 16,
+            "blockingPartIds": [
+                10,
+                31,
+                34
+            ]
+        },
+        {
+            "id": 38,
+            "ownerPartId": 17,
+            "blockingPartIds": [
+                18,
+                19,
+                20
+            ]
+        },
+        {
+            "id": 39,
+            "ownerPartId": 18,
+            "blockingPartIds": [
+                19,
+                20
+            ]
+        },
+        {
+            "id": 40,
+            "ownerPartId": 19,
+            "blockingPartIds": [
+                20
+            ]
+        },
+        {
+            "id": 41,
+            "ownerPartId": 20,
+            "blockingPartIds": []
+        },
+        {
+            "id": 42,
+            "ownerPartId": 21,
+            "blockingPartIds": []
+        },
+        {
+            "id": 43,
+            "ownerPartId": 22,
+            "blockingPartIds": []
+        },
+        {
+            "id": 44,
+            "ownerPartId": 23,
+            "blockingPartIds": [
+                24,
+                25,
+                26
+            ]
+        },
+        {
+            "id": 45,
+            "ownerPartId": 24,
+            "blockingPartIds": [
+                25,
+                26
+            ]
+        },
+        {
+            "id": 46,
+            "ownerPartId": 25,
+            "blockingPartIds": [
+                26
+            ]
+        },
+        {
+            "id": 47,
+            "ownerPartId": 26,
+            "blockingPartIds": []
+        },
+        {
+            "id": 48,
+            "ownerPartId": 27,
+            "blockingPartIds": [
+                28,
+                29,
+                30
+            ]
+        },
+        {
+            "id": 49,
+            "ownerPartId": 28,
+            "blockingPartIds": [
+                29,
+                30
+            ]
+        },
+        {
+            "id": 50,
+            "ownerPartId": 29,
+            "blockingPartIds": [
+                30
+            ]
+        },
+        {
+            "id": 51,
+            "ownerPartId": 30,
+            "blockingPartIds": []
+        },
+        {
+            "id": 52,
+            "ownerPartId": 31,
+            "blockingPartIds": [
+                34,
+                41
+            ]
+        },
+        {
+            "id": 53,
+            "ownerPartId": 32,
+            "blockingPartIds": [
+                35,
+                41
+            ]
+        },
+        {
+            "id": 54,
+            "ownerPartId": 33,
+            "blockingPartIds": []
+        },
+        {
+            "id": 55,
+            "ownerPartId": 33,
+            "blockingPartIds": []
+        },
+        {
+            "id": 56,
+            "ownerPartId": 34,
+            "blockingPartIds": [
+                41
+            ]
+        },
+        {
+            "id": 57,
+            "ownerPartId": 34,
+            "blockingPartIds": [
+                30,
+                41
+            ]
+        },
+        {
+            "id": 58,
+            "ownerPartId": 35,
+            "blockingPartIds": [
+                41
+            ]
+        },
+        {
+            "id": 59,
+            "ownerPartId": 35,
+            "blockingPartIds": [
+                41
+            ]
+        },
+        {
+            "id": 60,
+            "ownerPartId": 36,
+            "blockingPartIds": []
+        },
+        {
+            "id": 61,
+            "ownerPartId": 36,
+            "blockingPartIds": []
+        },
+        {
+            "id": 62,
+            "ownerPartId": 36,
+            "blockingPartIds": []
+        },
+        {
+            "id": 63,
+            "ownerPartId": 36,
+            "blockingPartIds": []
+        },
+        {
+            "id": 64,
+            "ownerPartId": 37,
+            "blockingPartIds": []
+        },
+        {
+            "id": 65,
+            "ownerPartId": 37,
+            "blockingPartIds": [
+                24,
+                25
+            ]
+        },
+        {
+            "id": 66,
+            "ownerPartId": 37,
+            "blockingPartIds": []
+        },
+        {
+            "id": 67,
+            "ownerPartId": 38,
+            "blockingPartIds": []
+        },
+        {
+            "id": 68,
+            "ownerPartId": 38,
+            "blockingPartIds": [
+                42
+            ]
+        },
+        {
+            "id": 69,
+            "ownerPartId": 38,
+            "blockingPartIds": [
+                28,
+                29
+            ]
+        },
+        {
+            "id": 70,
+            "ownerPartId": 39,
+            "blockingPartIds": [
+                19
+            ]
+        },
+        {
+            "id": 71,
+            "ownerPartId": 39,
+            "blockingPartIds": [
+                21
+            ]
+        },
+        {
+            "id": 72,
+            "ownerPartId": 39,
+            "blockingPartIds": [
+                22
+            ]
+        },
+        {
+            "id": 73,
+            "ownerPartId": 40,
+            "blockingPartIds": [
+                24
+            ]
+        },
+        {
+            "id": 74,
+            "ownerPartId": 40,
+            "blockingPartIds": [
+                39
+            ]
+        },
+        {
+            "id": 75,
+            "ownerPartId": 40,
+            "blockingPartIds": [
+                43
+            ]
+        },
+        {
+            "id": 76,
+            "ownerPartId": 41,
+            "blockingPartIds": [
+                28
+            ]
+        },
+        {
+            "id": 77,
+            "ownerPartId": 41,
+            "blockingPartIds": [
+                42
+            ]
+        },
+        {
+            "id": 78,
+            "ownerPartId": 42,
+            "blockingPartIds": []
+        },
+        {
+            "id": 79,
+            "ownerPartId": 43,
+            "blockingPartIds": []
+        },
+        {
+            "id": 80,
+            "ownerPartId": 44,
+            "blockingPartIds": []
+        },
+        {
+            "id": 81,
+            "ownerPartId": 44,
+            "blockingPartIds": []
+        },
+        {
+            "id": 82,
+            "ownerPartId": 45,
+            "blockingPartIds": []
+        },
+        {
+            "id": 83,
+            "ownerPartId": 45,
+            "blockingPartIds": []
+        },
+        {
+            "id": 84,
+            "ownerPartId": 46,
+            "blockingPartIds": []
+        },
+        {
+            "id": 85,
+            "ownerPartId": 46,
+            "blockingPartIds": []
+        },
+        {
+            "id": 86,
+            "ownerPartId": 46,
+            "blockingPartIds": [
+                35
+            ]
+        }
+    ],
+    "allowedColors": [
+        4,
+        5,
+        0,
+        7,
+        6,
+        1,
+        3,
+        8,
+        9
+    ]
+}
