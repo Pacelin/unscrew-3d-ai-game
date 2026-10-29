@@ -139,7 +139,9 @@ namespace Unscrew.Core.Tests
         public void FreeCoins_AddsCoins()
         {
             Assert.AreEqual(ShopResult.Success, _shop.TryBuy(EconomyConfig.FreeCoinsItemId));
-            Assert.AreEqual(1000 + _cfg.freeCoinsAmount, _wallet.Coins);
+            int amount = new ShopCatalog(_cfg).Find(EconomyConfig.FreeCoinsItemId).amount;
+            Assert.Greater(amount, 0);
+            Assert.AreEqual(1000 + amount, _wallet.Coins);
         }
 
         [Test]
