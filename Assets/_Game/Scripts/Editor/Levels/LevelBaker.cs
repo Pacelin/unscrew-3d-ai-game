@@ -39,6 +39,12 @@ namespace Unscrew.Editor.Levels
 
         public static SweepStart SweepStartMode = SweepStart.SeatTangent;
 
+        /// <summary>
+        /// Rule 1 fix: lift heads embedded in the owner outwards along the bolt axis (BoltDefinition.headLift) before the sweep.
+        /// false = previous behaviour (report only, headLift = 0), used for before/after comparisons.
+        /// </summary>
+        public static bool ApplyHeadLift = true;
+
         // Screw004 mesh: long axis is local +Y, the head is at the top (max Y), the shaft goes down
         // to min Y. The bolt prefab rotates the mesh by 90 deg around X, so "outwards" == bolt transform.forward.
 
@@ -152,6 +158,14 @@ namespace Unscrew.Editor.Levels
             return g;
         }
 
+        /// <summary>Bolt geometry moved outwards along its axis by lift (world units).</summary>
+        public static BoltGeometry Shift(BoltGeometry g, float lift)
+        {
+            var d = g.axis * lift;
+            g.seat += d; g.headCenter += d; g.headTop += d; g.tip += d;
+            return g;
+        }
+
         /// <summary>The unscrewing sweep of a bolt: sphere centre at start, direction, radius and distance.</summary>
         public static void GetSweep(BoltGeometry g, out Vector3 origin, out float radius, out float distance)
         {
@@ -184,8 +198,14 @@ namespace Unscrew.Editor.Levels
             /// penetration depth of the start sphere into that part (0 = merely touching).
             /// </summary>
             public List<(int bolt, int part, float depth)> initialOverlaps = new List<(int, int, float)>();
-            /// <summary>Rule 1: bolts whose head is inside the owner mesh.</summary>
+            /// <summary>Rule 1 after headLift: bolts whose head is still inside the owner mesh (the lift fallbacks).</summary>
             public List<LevelValidator.HeadViolation> headViolations = new List<LevelValidator.HeadViolation>();
+            /// <summary>Rule 1 on the source positions (before headLift).</summary>
+            public List<LevelValidator.HeadViolation> originalHeadViolations = new List<LevelValidator.HeadViolation>();
+            /// <summary>headLift measurement for every bolt that violated rule 1 originally.</summary>
+            public Dictionary<int, LevelValidator.LiftResult> lifts = new Dictionary<int, LevelValidator.LiftResult>();
+            /// <summary>Bolts whose lift was rejected (kept at the original position; need a manual override).</summary>
+            public List<int> liftFallbacks = new List<int>();
             public List<string> brokenCycles = new List<string>();
             public int overridesApplied;
             public int blockedBolts;
@@ -255,8 +275,24 @@ namespace Unscrew.Editor.Levels
                     result.minLength = Mathf.Min(result.minLength, g.length); result.maxLength = Mathf.Max(result.maxLength, g.length);
                     result.minHeadHeight = Mathf.Min(result.minHeadHeight, g.headHeight); result.maxHeadHeight = Mathf.Max(result.maxHeadHeight, g.headHeight);
 
-                    // Rule 1: head not inside the owner mesh.
-                    var violation = LevelValidator.CheckHead(g, partColliders[b.ownerId]);
+                    // Rule 1: head not inside the owner mesh. A violating head is lifted outwards along the axis
+                    // (headLift) before the sweep; the check is repeated on the lifted position.
+                    var owner = partColliders[b.ownerId];
+                    var original = LevelValidator.CheckHead(g, owner);
+                    if (original != null)
+                    {
+                        original.level = number; original.boltId = b.id; original.ownerPartId = b.ownerId;
+                        result.originalHeadViolations.Add(original);
+                        if (ApplyHeadLift)
+                        {
+                            var lr = LevelValidator.ComputeHeadLift(g, owner, original);
+                            result.lifts[b.id] = lr;
+                            if (lr.fallbackReason != null) result.liftFallbacks.Add(b.id);
+                            def.bolts[b.id].headLift = lr.lift;
+                            g = Shift(g, lr.lift);
+                        }
+                    }
+                    var violation = def.bolts[b.id].headLift > 0f ? LevelValidator.CheckHead(g, owner) : original;
                     if (violation != null)
                     {
                         violation.level = number; violation.boltId = b.id; violation.ownerPartId = b.ownerId;
@@ -305,7 +341,10 @@ namespace Unscrew.Editor.Levels
             if (write)
             {
                 Directory.CreateDirectory(OutputDir);
-                File.WriteAllText(OutputPath(number), JsonUtility.ToJson(def, true));
+                // JsonUtility prints floats via double (0.063 -> 0.06300000101327896); headLift is ceiled to 1e-3, print it as such.
+                var json = System.Text.RegularExpressions.Regex.Replace(JsonUtility.ToJson(def, true), "\"headLift\": ([-0-9.eE]+)",
+                    m => "\"headLift\": " + double.Parse(m.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture).ToString("0.0##", System.Globalization.CultureInfo.InvariantCulture));
+                File.WriteAllText(OutputPath(number), json);
             }
             if (write && result.brokenCycles.Count > 0)
                 Debug.Log($"[LevelBaker] Level {number}: {result.brokenCycles.Count} blocking edges dropped to break cycles\n" + string.Join("\n", result.brokenCycles));

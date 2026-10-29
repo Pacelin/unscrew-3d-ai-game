@@ -110,6 +110,93 @@ namespace Unscrew.Editor.Levels
             return new HeadViolation { insideSamples = inside, totalSamples = samples.Count, centerInside = centerInside, depth = depth, headHeight = g.headHeight };
         }
 
+        // ---------------------------------------------------------------- headLift (fix for rule 1)
+
+        /// <summary>Extra lift added on top of the measured minimum so the head clears the surface (world units).</summary>
+        public static float LiftEpsilon = 0.015f;
+
+        public sealed class LiftResult
+        {
+            /// <summary>Lift to apply (0 when no violation or on fallback).</summary>
+            public float lift;
+            /// <summary>Measured minimal lift + epsilon (the value that would be applied without fallback); +inf if not found.</summary>
+            public float required;
+            /// <summary>Depth reported by <see cref="CheckHead"/> for the original position.</summary>
+            public float reportedDepth;
+            /// <summary>Non-null when the lift was rejected and the bolt keeps its original (rule-1 failing) position.</summary>
+            public string fallbackReason;
+            public float boltLength;
+        }
+
+        static bool AllOutside(LevelBaker.BoltGeometry g, List<Collider> owner)
+        {
+            foreach (var s in HeadSamples(g))
+                if (IsInside(s, owner)) return false;
+            return true;
+        }
+
+        /// <summary>
+        /// The shaft is held by the owner: its middle is inside the owner mesh, or (thin-walled owners: plates, scales, shells)
+        /// the shaft segment seat→tip crosses the owner's surface.
+        /// </summary>
+        public static bool ShaftAnchored(LevelBaker.BoltGeometry g, List<Collider> owner)
+        {
+            if (IsInside(ShaftMiddle(g), owner)) return true;
+            float len = Vector3.Distance(g.seat, g.tip);
+            foreach (var c in owner)
+                if (c.Raycast(new Ray(g.seat, -g.axis), out _, len) || c.Raycast(new Ray(g.tip, g.axis), out _, len)) return true;
+            return false;
+        }
+
+        /// <summary>Middle of the shaft (between the seat and the tip).</summary>
+        public static Vector3 ShaftMiddle(LevelBaker.BoltGeometry g) => g.seat - g.axis * (g.shaftLength * 0.5f);
+
+        /// <summary>
+        /// For a bolt that violates rule 1, measures the smallest outward shift along the axis that puts all head samples
+        /// outside the owner (step search + bisection with the parity test) and adds <see cref="LiftEpsilon"/>.
+        /// The lift is rejected (fallback to 0) when it exceeds the bolt length or the shaft no longer reaches the owner
+        /// (<see cref="ShaftAnchored"/>; the head would float over empty space on a bare shaft).
+        /// </summary>
+        public static LiftResult ComputeHeadLift(LevelBaker.BoltGeometry g, List<Collider> owner, HeadViolation violation)
+        {
+            var r = new LiftResult { reportedDepth = violation?.depth ?? 0f, boltLength = g.length, required = 0f };
+            if (violation == null) return r;
+
+            float step = Mathf.Max(0.01f, g.headHeight * 0.1f);
+            float maxSearch = g.length * 3f;
+            float found = float.PositiveInfinity;
+            for (float t = step; t <= maxSearch + 1e-4f; t += step)
+            {
+                if (!AllOutside(LevelBaker.Shift(g, t), owner)) continue;
+                float lo = t - step, hi = t;
+                for (int i = 0; i < 14; i++)
+                {
+                    float mid = (lo + hi) * 0.5f;
+                    if (AllOutside(LevelBaker.Shift(g, mid), owner)) hi = mid; else lo = mid;
+                }
+                found = hi;
+                break;
+            }
+            if (float.IsPositiveInfinity(found))
+            {
+                r.required = float.PositiveInfinity;
+                r.fallbackReason = $"no clear position within {maxSearch.ToString("0.00", CultureInfo.InvariantCulture)} (3x bolt length)";
+                return r;
+            }
+            float lift = Mathf.Ceil((found + LiftEpsilon) * 1000f) / 1000f;
+            r.required = lift;
+            var lifted = LevelBaker.Shift(g, lift);
+            if (lift > g.length)
+                r.fallbackReason = "lift > bolt length";
+            else if (!ShaftAnchored(lifted, owner))
+                r.fallbackReason = "shaft does not reach the owner after the lift";
+            else if (!AllOutside(lifted, owner))
+                r.fallbackReason = "head re-enters the owner after epsilon";
+            else
+                r.lift = lift;
+            return r;
+        }
+
         /// <summary>Ray-parity point-in-mesh test against each collider separately (works for non-convex MeshColliders; needs queriesHitBackfaces).</summary>
         public static bool IsInside(Vector3 p, List<Collider> colliders)
         {
@@ -168,8 +255,8 @@ namespace Unscrew.Editor.Levels
 
             sb.AppendLine("## Уровни (было → стало)");
             sb.AppendLine();
-            sb.AppendLine("| Уровень | Болтов | Заблокировано | Доступно на старте | Глубина | Разорвано рёбер | Изменилось болтов | Нач. пересечений (глубоких) | Правило 1 | Валиден |");
-            sb.AppendLine("| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: |");
+            sb.AppendLine("| Уровень | Болтов | Заблокировано | Доступно на старте | Глубина | Разорвано рёбер | Изменилось болтов | Нач. пересечений (глубоких) | Правило 1 (исх. → после lift) | headLift > 0 | Валиден |");
+            sb.AppendLine("| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: |");
             int totalBolts = 0, totalStart = 0, totalOldStart = 0, totalBroken = 0, totalOverlaps = 0, totalViol = 0;
             foreach (var r in results)
             {
@@ -191,15 +278,41 @@ namespace Unscrew.Editor.Levels
                         if (!(old.bolts[i].blockingPartIds ?? new int[0]).SequenceEqual(def.bolts[i].blockingPartIds)) diff++;
                     changed = diff.ToString();
                 }
-                sb.AppendLine($"| {r.number} | {bolts} | {blocked} | {start} | {depth} | {r.brokenCycles.Count} | {changed} | {r.initialOverlaps.Count} ({r.initialOverlaps.Count(o => o.depth >= DeepOverlap)}) | {r.headViolations.Count} | {(r.valid ? "да" : "НЕТ")} |");
+                sb.AppendLine($"| {r.number} | {bolts} | {blocked} | {start} | {depth} | {r.brokenCycles.Count} | {changed} | {r.initialOverlaps.Count} ({r.initialOverlaps.Count(o => o.depth >= DeepOverlap)}) | {r.originalHeadViolations.Count} → {r.headViolations.Count} | {r.lifts.Values.Count(l => l.lift > 0f)} | {(r.valid ? "да" : "НЕТ")} |");
             }
             sb.AppendLine();
             sb.AppendLine($"Итого: {totalBolts} болтов, на старте доступно {(before.Count > 0 ? $"{totalOldStart} → " : "")}{totalStart} ({100f * totalStart / totalBolts:0}%), " +
-                          $"разорвано рёбер {totalBroken}, начальных пересечений {totalOverlaps}, нарушений правила 1 {totalViol}. " +
+                          $"разорвано рёбер {totalBroken}, начальных пересечений {totalOverlaps}, нарушений правила 1 {results.Sum(r => r.originalHeadViolations.Count)} → {totalViol}, поднято болтов {results.Sum(r => r.lifts.Values.Count(l => l.lift > 0f))}. " +
                           (rebaked ? "Файлы перезаписаны." : "Файлы не перезаписывались («было» = файлы на диске, «стало» = свежий бейк)."));
             sb.AppendLine();
 
-            sb.AppendLine("## Правило 1: шляпка внутри детали-владельца");
+            sb.AppendLine("## headLift (исправление правила 1)");
+            sb.AppendLine();
+            var lifted = results.SelectMany(r => r.lifts.Where(kv => kv.Value.lift > 0f).Select(kv => (r.number, kv.Key, kv.Value))).ToList();
+            if (lifted.Count > 0)
+            {
+                sb.AppendLine($"Поднято {lifted.Count} болтов: headLift {F(lifted.Min(x => x.Value.lift))}–{F(lifted.Max(x => x.Value.lift))}, " +
+                              $"среднее {F(lifted.Average(x => x.Value.lift))}; headLift / длина болта — макс. {(lifted.Max(x => x.Value.lift / x.Value.boltLength)).ToString("0.00", CultureInfo.InvariantCulture)}. " +
+                              $"Измеренный lift − (глубина отчёта + ε): от {F(lifted.Min(x => x.Value.lift - x.Value.reportedDepth - LiftEpsilon))} до {F(lifted.Max(x => x.Value.lift - x.Value.reportedDepth - LiftEpsilon))}.");
+                sb.AppendLine();
+                foreach (var r in results)
+                    if (r.lifts.Values.Any(l => l.lift > 0f))
+                        sb.AppendLine($"- L{r.number:00}: " + string.Join(", ", r.lifts.Where(kv => kv.Value.lift > 0f).OrderBy(kv => kv.Key).Select(kv => $"b{kv.Key} {F(kv.Value.lift)}")));
+                sb.AppendLine();
+            }
+            var fb = results.SelectMany(r => r.liftFallbacks.Select(id => (r.number, id, r.lifts[id]))).ToList();
+            sb.AppendLine($"Откат (lift отклонён, болт оставлен в исходной позиции, нужна ручная правка): {fb.Count}.");
+            if (fb.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("| Уровень | Болт | Нужный lift | Длина болта | Глубина по отчёту | Причина |");
+                sb.AppendLine("| ---: | ---: | ---: | ---: | ---: | --- |");
+                foreach (var x in fb)
+                    sb.AppendLine($"| {x.number} | {x.id} | {(float.IsPositiveInfinity(x.Item3.required) ? "∞" : F(x.Item3.required))} | {F(x.Item3.boltLength)} | {F(x.Item3.reportedDepth)} | {x.Item3.fallbackReason} |");
+            }
+            sb.AppendLine();
+
+            sb.AppendLine("## Правило 1: шляпка внутри детали-владельца (после headLift)");
             sb.AppendLine();
             if (totalViol == 0) sb.AppendLine("Нарушений нет.");
             else

@@ -126,6 +126,8 @@ namespace Unscrew.Editor.Levels
                 foreach (Transform b in boltsRoot)
                 {
                     int id = int.Parse(b.name.Substring(5, 3));
+                    // Rule 1 fix, exactly as the game view does at spawn.
+                    if (def.bolts[id].headLift != 0f) b.position += b.forward * def.bolts[id].headLift;
                     if (sweepMat != null && System.Array.IndexOf(sweepBolts, id) >= 0)
                     {
                         var g = LevelBaker.GetGeometry(b);

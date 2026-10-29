@@ -23,7 +23,7 @@ description: Format of the source level assets (Level_XX.prefab, Level_XX.json, 
 ```json
 { "number": 1, "allowedColors": [1,2],
   "parts": [ { "id": 0, "boltIds": [0,1,2] } ],
-  "bolts": [ { "id": 0, "ownerPartId": 0, "blockingPartIds": [] } ] }
+  "bolts": [ { "id": 0, "ownerPartId": 0, "blockingPartIds": [], "headLift": 0.0 } ] }
 ```
 Генерирует editor-скрипт `Assets/_Game/Scripts/Editor/Levels/LevelBaker.cs`, меню **Unscrew/Bake Levels** (а также статический метод для `execute_code` и batchmode).
 
@@ -38,10 +38,18 @@ description: Format of the source level assets (Level_XX.prefab, Level_XX.json, 
 5. Циклы разрываются (выкидывается ребро с самым дальним попаданием; начальные пересечения весят −глубина, т. е. сначала
    самые неглубокие касания), всё логируется. Итог валидируется по `BoardRules`.
 6. **Правило «шляпка не внутри владельца»** (`LevelValidator.CheckHead`): 19 точек шляпки, тест чётности лучей по 7 направлениям против
-   MeshCollider владельца. Только отчёт (161 нарушение, 52 глубоких, в основном L05 и L18); данные не меняются, предложение `headLift` — в LevelBake.md.
+   MeshCollider владельца. Исправление — `BoltDefinition.headLift` (`LevelValidator.ComputeHeadLift`): минимальный сдвиг наружу вдоль оси,
+   при котором все точки шляпки вне владельца (шаг + бисекция) + 0.015, округление вверх до 0.001. Применяется в бейке **до** свипа
+   (шаг 3 считается от поднятой позиции). Откат (`headLift = 0`, болт в исходной позиции, нужна ручная правка), если подъём > длины болта,
+   стержень после подъёма не достаёт до владельца или чистой позиции нет. Итог: 161 нарушение → 129 поднято (0.026–0.523), 32 отката
+   (L05 — 11, L18 — 14, L12 — 4, L13 — 2, L16 — 1), список — в LevelBake.md.
 
 Меню: **Unscrew/Validate Levels** (`LevelValidator.ValidateAll(false)` — отчёт без записи, сравнение с файлами на диске),
 **Unscrew/Validate And Rebake Levels** (`ValidateAll(true)`), **Unscrew/Bake Levels** (`LevelBaker.BakeAll()`).
+
+**`headLift` обязателен для игры:** view при спавне болта делает `boltTransform.position += boltTransform.forward * headLift`
+(мировые единицы уровня при корне префаба в масштабе 1; если корень уровня масштабируется — умножить на `levelRoot.lossyScale.x`).
+Без этого 129 болтов будут с утопленной шляпкой, а граф блокировок (посчитанный от поднятых шляпок) не будет соответствовать картинке.
 
 **Следствие для игры:** при разрыве циклов выкидывается 139 рёбер (10 уровней), и правило не учитывает видимость: часть болтов формально
 доступна, хотя шляпка визуально прикрыта (или утоплена во владельце). Тап — raycast **только по слою болтов**, доступность — из
