@@ -32,6 +32,11 @@ namespace Unscrew.Core
         public int ownerPartId;
         /// <summary>Parts (other than the owner) that cover this bolt: it is accessible only after all of them are released.</summary>
         public int[] blockingPartIds;
+        /// <summary>
+        /// World-space offset along the bolt's outward axis that moves an embedded head out onto the owner's surface
+        /// (level rule 1). Applied by the bake before the sweep and by the game view at spawn. 0 = no correction.
+        /// </summary>
+        public float headLift;
     }
 
     /// <summary>Per-level tuning produced by IDifficultyCurve.</summary>
