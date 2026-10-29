@@ -36,7 +36,7 @@ description: Rules and workflow for implementing one Unscrew.Core module (Board,
 
 ## Отчёт оркестратору (финальное сообщение)
 
-- Ветка и список коммитов (`git log --oneline main..HEAD`).
+- Ветка и список коммитов (`git log --oneline master..HEAD`).
 - Вывод последнего `test.sh <M>` (строка итогов).
 - Публичный API в 5–10 строк.
 - Отклонения от плана и предложения по Contracts.

@@ -40,7 +40,7 @@ Docs/                           Plan.md, AI_LOG.md, Modules/<Module>.md
 
 - Unity-редактор один → через UnityMCP работает **только один агент за раз** (level-designer или unity-integrator).
 - core-dev агенты работают в **git worktree** на ветках `core/<module>`, Unity их не видит. Проверка — только dotnet.
-- core-dev коммитит в свою ветку; в `main` мержит оркестратор (`git merge --no-ff`), затем гоняет `test.sh All` и Unity-тесты.
+- core-dev коммитит в свою ветку; в `master` мержит оркестратор (`git merge --no-ff`), затем гоняет `test.sh All` и Unity-тесты.
 
 ## Коммиты
 
