@@ -1,0 +1,45 @@
+using UnityEngine;
+
+namespace Unscrew.Game
+{
+    /// <summary>Global animation tuning and small easing helpers (no tween package).</summary>
+    public static class Anim
+    {
+        /// <summary>Multiplier for all view animations (DebugAutoplay speeds them up).</summary>
+        public static float Speed = 1f;
+
+        public static float Delta => Time.deltaTime * Speed;
+
+        public const float UnscrewTime = 0.22f;
+        public const float FlyTime = 0.32f;
+        public const float BufferToBoxTime = 0.25f;
+        public const float BoxLeaveTime = 0.3f;
+        public const float BoxEnterTime = 0.25f;
+        public const float ShakeTime = 0.3f;
+
+        public static float OutCubic(float t)
+        {
+            t = 1f - Mathf.Clamp01(t);
+            return 1f - t * t * t;
+        }
+
+        public static float InOutQuad(float t)
+        {
+            t = Mathf.Clamp01(t);
+            return t < 0.5f ? 2f * t * t : 1f - Mathf.Pow(-2f * t + 2f, 2f) * 0.5f;
+        }
+
+        public static float InQuad(float t)
+        {
+            t = Mathf.Clamp01(t);
+            return t * t;
+        }
+
+        /// <summary>Quadratic bezier.</summary>
+        public static Vector3 Bezier(Vector3 a, Vector3 c, Vector3 b, float t)
+        {
+            float u = 1f - t;
+            return u * u * a + 2f * u * t * c + t * t * b;
+        }
+    }
+}

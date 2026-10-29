@@ -1,0 +1,60 @@
+using UnityEngine;
+
+namespace Unscrew.Game
+{
+    /// <summary>
+    /// All asset references the game needs to build a level. Filled by the editor menu
+    /// "Unscrew/Build Game Scene" (GameSceneBuilder), so it is reproducible.
+    /// Index i in the level arrays = source level i + 1.
+    /// </summary>
+    [CreateAssetMenu(menuName = "Unscrew/Level Catalog", fileName = "LevelCatalog")]
+    public sealed class LevelCatalog : ScriptableObject
+    {
+        [Header("Levels (index = number - 1)")]
+        public GameObject[] levelPrefabs;
+        /// <summary>Baked LevelDefinition JSON (Assets/_Game/Data/Levels).</summary>
+        public TextAsset[] bakedLevels;
+        /// <summary>Source asset JSON (node paths, release forces).</summary>
+        public TextAsset[] sourceLevels;
+
+        [Header("Bolt palette (index = color)")]
+        public GameObject[] boltPalette;
+
+        [Header("Tray")]
+        public GameObject boxPrefab;
+        public GameObject holePrefab;
+
+        private Material[][] _materials;
+        private Color[] _colors;
+
+        public int LevelCount => levelPrefabs != null ? levelPrefabs.Length : 0;
+
+        /// <summary>Shared materials of palette bolt Bolt_{color:00}.</summary>
+        public Material[] GetBoltMaterials(int color)
+        {
+            EnsurePalette();
+            return _materials[color];
+        }
+
+        /// <summary>Base color of the palette entry (used to tint boxes).</summary>
+        public Color GetColor(int color)
+        {
+            EnsurePalette();
+            return color >= 0 && color < _colors.Length ? _colors[color] : Color.gray;
+        }
+
+        private void EnsurePalette()
+        {
+            if (_materials != null && _materials.Length == boltPalette.Length) return;
+            _materials = new Material[boltPalette.Length][];
+            _colors = new Color[boltPalette.Length];
+            for (int i = 0; i < boltPalette.Length; i++)
+            {
+                var r = boltPalette[i].GetComponentInChildren<Renderer>(true);
+                _materials[i] = r.sharedMaterials;
+                var m = _materials[i][0];
+                _colors[i] = m.HasProperty("_BaseColor") ? m.GetColor("_BaseColor") : m.color;
+            }
+        }
+    }
+}
