@@ -40,3 +40,6 @@ out/
 !/Tools/**/*.csproj
 /Tools/**/bin/
 /Tools/**/obj/
+
+### Claude Code agent worktrees
+/.claude/worktrees/
