@@ -10,7 +10,10 @@ namespace Unscrew.Core
         Lost,
     }
 
-    /// <summary>One played level: IBoard + ICollector + LevelLayout glued together with win/lose rules.</summary>
+    /// <summary>
+    /// One played level: IBoard + ICollector + LevelLayout glued together with win/lose rules.
+    /// Methods only append to the passed events/releasedParts lists; clearing them is the caller's job.
+    /// </summary>
     public interface IGameSession
     {
         IBoard Board { get; }
