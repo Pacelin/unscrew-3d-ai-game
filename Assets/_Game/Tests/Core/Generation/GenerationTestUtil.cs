@@ -81,6 +81,7 @@ namespace Unscrew.Core.Tests
             Layout = layout;
             _board = new FakeBoard(def);
             _collector = new FakeCollector(layout.boxQueue, activeBoxes, boxCapacity, bufferSlots);
+            UpdateState();
         }
 
         public FakeGameSession(LevelDefinition def, LevelLayout layout, DifficultySettings s)
@@ -107,15 +108,17 @@ namespace Unscrew.Core.Tests
             _collector.Add(boltId, GetBoltColor(boltId), events);
             MovesMade++;
             PeakBuffer = Math.Max(PeakBuffer, _collector.BufferUsed);
-            if (_board.RemainingBolts == 0) State = SessionState.Won;
-            else if (_collector.IsBufferFull) State = SessionState.Lost;
-            else
-            {
-                var acc = new List<int>();
-                _board.GetAccessibleBolts(acc);
-                if (acc.Count == 0) State = SessionState.Lost;
-            }
+            UpdateState();
             return true;
+        }
+
+        /// <summary>Same rule as GameSession: no bolts -> Won; no accessible bolt the collector accepts -> Lost.</summary>
+        private void UpdateState()
+        {
+            if (_board.RemainingBolts == 0) { State = SessionState.Won; return; }
+            for (int b = 0; b < Layout.boltColors.Length; b++)
+                if (_board.IsAccessible(b) && _collector.CanAccept(GetBoltColor(b))) return;
+            State = SessionState.Lost;
         }
 
         public bool ForceRemove(int boltId, List<CollectEvent> events, List<int> releasedParts) =>

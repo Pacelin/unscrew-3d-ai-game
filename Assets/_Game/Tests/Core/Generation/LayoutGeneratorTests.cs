@@ -75,8 +75,10 @@ namespace Unscrew.Core.Tests
         }
 
         [Test]
-        public void MixZero_NeedsNoBuffer_EvenWithOneHole()
+        public void MixZero_PlannedOrderNeedsNoBuffer_EvenWithOneHole()
         {
+            // The construction order never touches the buffer. The bot may deviate from it and fill the single hole:
+            // under the out-of-moves rule a full buffer is not a loss while a box move exists.
             for (int seed = 0; seed < 10; seed++)
             {
                 var def = SyntheticLevels.Real(7, seed);
@@ -86,7 +88,7 @@ namespace Unscrew.Core.Tests
                 AssertValid(def, s, layout);
                 Assert.AreEqual(0, gen.LastPlannedPeak);
                 Assert.IsTrue(BotWins(def, s, layout, out int peak), "seed " + seed);
-                Assert.AreEqual(0, peak);
+                Assert.LessOrEqual(peak, 1);
             }
         }
 
