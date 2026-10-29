@@ -1,0 +1,50 @@
+# Модуль Boosters
+
+`Assets/_Game/Scripts/Core/Boosters/BoosterService.cs` — `BoosterService : IBoosterService`.
+Зависит только от `Contracts` (`IGameSession`, `ICollector`, `IBoard`, `IBoosterInventory`).
+
+## Публичный API
+
+```csharp
+var service = new BoosterService(inventory);              // ArgumentNullException, если inventory == null
+bool ok = service.CanUse(BoosterType.Magnet, session);    // можно ли применить прямо сейчас
+bool used = service.TryUse(type, session, targetBoltId, events, releasedParts);
+```
+
+- `CanUse` / `TryUse` бросают `ArgumentNullException` при `session == null` и `ArgumentOutOfRangeException` для неизвестного `BoosterType`.
+- `events` и `releasedParts` передаются насквозь в `IGameSession.ForceRemove` / `ICollector.AddBufferSlot` — сервис их не очищает, только дополняет (порядок событий = порядок анимаций).
+- Бустер списывается (`IBoosterInventory.TryConsume`) **только** когда `TryUse` вернул `true`. При пустом инвентаре — `false` без изменений.
+
+## Поведение бустеров
+
+| Бустер | Когда можно | Эффект |
+|---|---|---|
+| ExtraSlot | `Playing` или `Lost` | `Collector.AddBufferSlot(events)`; если `Lost` — `session.Revive()` |
+| Drill | `Playing`, есть болты на доске | `ForceRemove(targetBoltId)` (блокировка игнорируется) |
+| Magnet | `Playing`, есть левая непустая коробка и хватает болтов её цвета | `ForceRemove` каждого выбранного болта |
+
+## Ключевые решения
+
+- **Drill, `CanUse` без цели.** `CanUse(Drill)` не знает цель (сигнатура контракта), поэтому проверяет только состояние, инвентарь и наличие болтов — UI по нему включает режим выбора болта. Невалидная цель (`<0`, `>=bolts`, уже снятый болт) в `TryUse` даёт `false` без исключения: игрок может тапнуть «мимо».
+- **Drill, коллектор не принимает цвет** (нет коробки, буфер полон в `Playing`) — `ForceRemove` вернёт `false`, бустер не списывается. Как в Screw Master: дрель не может «убить» сессию.
+- **Magnet, «левая непустая коробка»** = самый левый слот с `color >= 0` (у `BoxView` «пустой» = слот без коробки, очередь исчерпана). Нужно `capacity - filled` болтов этого цвета.
+- **Magnet, выбор болтов:** сначала доступные (`GetAccessibleBolts`, по возрастанию id), затем заблокированные (по возрастанию id). Детерминированно, без `Rng`.
+- **Magnet, не хватает болтов цвета** на доске (при корректной раскладке не бывает, но контракт этого не гарантирует) — бустер не применяется вовсе (`CanUse == false`), частичное заполнение не делаем: в Screw Master магнит всегда закрывает коробку целиком.
+- **Magnet, частичный отказ.** Список болтов собирается и проверяется до первого снятия. Если первый `ForceRemove` вернул `false` — `false`, ничего не списано. Если отказ случился позже (теоретически невозможно при корректном коллекторе), снятые болты уже ушли с доски, поэтому бустер считается использованным (`true`, списан).
+- **ExtraSlot в `Playing`** добавляет лунку без `Revive`. В `Lost` после `AddBufferSlot` вызывается `Revive`; бустер считается использованным даже если `Revive` вернул `false` (лунка уже добавлена).
+- **Порядок «эффект → списание».** Сначала проверяется `GetCount > 0`, затем эффект, затем `TryConsume` — без лишних событий `Changed` (не делаем «списать и вернуть»).
+- **Без аллокаций** на горячем пути: временные списки (`_accessible`, `_picked`) — поля сервиса. Следствие: экземпляр не потокобезопасен (в Unity это не нужно).
+
+## Тесты (`Assets/_Game/Tests/Core/Boosters`)
+
+Фейки в `BoosterFakes.cs` (`BoosterFakeInventory`, `BoosterFakeBoard`, `BoosterFakeCollector`, `BoosterFakeSession`) — с префиксом `Booster`, чтобы не конфликтовать с фейками других модулей в `test.sh All`.
+
+Покрыто (33 теста):
+- общие: null-аргументы, неизвестный тип, пустой инвентарь (ничего не меняется), сессия `Won`;
+- ExtraSlot: в `Playing` (+1 лунка, событие `BufferSlotAdded`, без `Revive`), в `Lost` с полным буфером (воскрешение);
+- Drill: заблокированный болт, освобождение детали, невалидные цели, уже снятый болт, коллектор не принимает цвет, `Lost`, списание ровно одного;
+- Magnet: доступные раньше заблокированных, частично заполненная коробка, только заблокированные болты, пропуск пустых слотов, пропуск снятых болтов, не хватает болтов, все слоты пусты, `Lost`, победа последним болтом, отказ первого/последующего `ForceRemove`, повторное использование.
+
+## Предложения по Contracts
+
+- `IBoosterService.CanUse` для Drill не принимает цель. Можно добавить `bool CanDrill(IGameSession session, int boltId)` (или `targetBoltId` в `CanUse`), чтобы UI подсвечивал болты, которые дрель реально может снять. Сейчас это обходится `session.Collector.CanAccept(session.GetBoltColor(id))` на стороне Game.
