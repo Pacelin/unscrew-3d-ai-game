@@ -180,16 +180,12 @@
         {
             "id": 7,
             "ownerPartId": 3,
-            "blockingPartIds": [
-                1
-            ]
+            "blockingPartIds": []
         },
         {
             "id": 8,
             "ownerPartId": 3,
-            "blockingPartIds": [
-                2
-            ]
+            "blockingPartIds": []
         },
         {
             "id": 9,
@@ -264,7 +260,9 @@
         {
             "id": 21,
             "ownerPartId": 9,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                8
+            ]
         },
         {
             "id": 22,
@@ -285,7 +283,8 @@
             "id": 25,
             "ownerPartId": 12,
             "blockingPartIds": [
-                3
+                3,
+                5
             ]
         },
         {
@@ -296,7 +295,10 @@
         {
             "id": 27,
             "ownerPartId": 13,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                5,
+                7
+            ]
         },
         {
             "id": 28,

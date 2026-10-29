@@ -584,12 +584,16 @@
         {
             "id": 47,
             "ownerPartId": 27,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                24
+            ]
         },
         {
             "id": 48,
             "ownerPartId": 28,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                24
+            ]
         },
         {
             "id": 49,
@@ -663,12 +667,16 @@
         {
             "id": 62,
             "ownerPartId": 37,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                32
+            ]
         },
         {
             "id": 63,
             "ownerPartId": 37,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                32
+            ]
         },
         {
             "id": 64,
@@ -693,9 +701,7 @@
         {
             "id": 68,
             "ownerPartId": 40,
-            "blockingPartIds": [
-                41
-            ]
+            "blockingPartIds": []
         },
         {
             "id": 69,
@@ -710,9 +716,7 @@
         {
             "id": 71,
             "ownerPartId": 41,
-            "blockingPartIds": [
-                35
-            ]
+            "blockingPartIds": []
         },
         {
             "id": 72,
@@ -749,9 +753,7 @@
         {
             "id": 78,
             "ownerPartId": 45,
-            "blockingPartIds": [
-                35
-            ]
+            "blockingPartIds": []
         },
         {
             "id": 79,
@@ -761,9 +763,7 @@
         {
             "id": 80,
             "ownerPartId": 47,
-            "blockingPartIds": [
-                35
-            ]
+            "blockingPartIds": []
         }
     ],
     "allowedColors": [

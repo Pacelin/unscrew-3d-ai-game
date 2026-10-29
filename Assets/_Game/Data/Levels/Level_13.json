@@ -206,8 +206,7 @@
             "id": 1,
             "ownerPartId": 1,
             "blockingPartIds": [
-                3,
-                5
+                3
             ]
         },
         {
@@ -218,9 +217,7 @@
         {
             "id": 3,
             "ownerPartId": 3,
-            "blockingPartIds": [
-                10
-            ]
+            "blockingPartIds": []
         },
         {
             "id": 4,
@@ -245,7 +242,9 @@
         {
             "id": 8,
             "ownerPartId": 8,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                14
+            ]
         },
         {
             "id": 9,
@@ -265,9 +264,7 @@
         {
             "id": 11,
             "ownerPartId": 11,
-            "blockingPartIds": [
-                4
-            ]
+            "blockingPartIds": []
         },
         {
             "id": 12,
@@ -278,8 +275,7 @@
             "id": 13,
             "ownerPartId": 13,
             "blockingPartIds": [
-                3,
-                10
+                3
             ]
         },
         {
@@ -295,14 +291,14 @@
         {
             "id": 16,
             "ownerPartId": 16,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                15
+            ]
         },
         {
             "id": 17,
             "ownerPartId": 17,
-            "blockingPartIds": [
-                4
-            ]
+            "blockingPartIds": []
         },
         {
             "id": 18,
@@ -322,9 +318,7 @@
         {
             "id": 21,
             "ownerPartId": 21,
-            "blockingPartIds": [
-                4
-            ]
+            "blockingPartIds": []
         },
         {
             "id": 22,
@@ -349,29 +343,35 @@
         {
             "id": 26,
             "ownerPartId": 3,
-            "blockingPartIds": [
-                10
-            ]
+            "blockingPartIds": []
         },
         {
             "id": 27,
             "ownerPartId": 18,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                12
+            ]
         },
         {
             "id": 28,
             "ownerPartId": 10,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                13
+            ]
         },
         {
             "id": 29,
             "ownerPartId": 8,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                19
+            ]
         },
         {
             "id": 30,
             "ownerPartId": 5,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                1
+            ]
         },
         {
             "id": 31,
@@ -381,12 +381,16 @@
         {
             "id": 32,
             "ownerPartId": 11,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                4
+            ]
         },
         {
             "id": 33,
             "ownerPartId": 17,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                4
+            ]
         },
         {
             "id": 34,
@@ -396,9 +400,7 @@
         {
             "id": 35,
             "ownerPartId": 15,
-            "blockingPartIds": [
-                16
-            ]
+            "blockingPartIds": []
         },
         {
             "id": 36,
@@ -445,29 +447,35 @@
         {
             "id": 44,
             "ownerPartId": 10,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                13
+            ]
         },
         {
             "id": 45,
             "ownerPartId": 18,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                12
+            ]
         },
         {
             "id": 46,
             "ownerPartId": 5,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                1
+            ]
         },
         {
             "id": 47,
             "ownerPartId": 3,
-            "blockingPartIds": [
-                4
-            ]
+            "blockingPartIds": []
         },
         {
             "id": 48,
             "ownerPartId": 8,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                19
+            ]
         },
         {
             "id": 49,
@@ -482,17 +490,22 @@
         {
             "id": 51,
             "ownerPartId": 11,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                4
+            ]
         },
         {
             "id": 52,
             "ownerPartId": 17,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                4
+            ]
         },
         {
             "id": 53,
             "ownerPartId": 15,
             "blockingPartIds": [
+                4,
                 17
             ]
         },
@@ -500,6 +513,7 @@
             "id": 54,
             "ownerPartId": 20,
             "blockingPartIds": [
+                4,
                 11
             ]
         },
@@ -519,9 +533,7 @@
         {
             "id": 57,
             "ownerPartId": 0,
-            "blockingPartIds": [
-                4
-            ]
+            "blockingPartIds": []
         },
         {
             "id": 58,
@@ -536,37 +548,36 @@
         {
             "id": 60,
             "ownerPartId": 3,
-            "blockingPartIds": [
-                4
-            ]
+            "blockingPartIds": []
         },
         {
             "id": 61,
             "ownerPartId": 12,
             "blockingPartIds": [
-                3,
-                18
+                3
             ]
         },
         {
             "id": 62,
             "ownerPartId": 19,
             "blockingPartIds": [
-                3,
-                8
+                3
             ]
         },
         {
             "id": 63,
             "ownerPartId": 8,
             "blockingPartIds": [
-                3
+                3,
+                9
             ]
         },
         {
             "id": 64,
             "ownerPartId": 5,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                1
+            ]
         },
         {
             "id": 65,
@@ -583,17 +594,23 @@
         {
             "id": 67,
             "ownerPartId": 17,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                4
+            ]
         },
         {
             "id": 68,
             "ownerPartId": 11,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                4
+            ]
         },
         {
             "id": 69,
             "ownerPartId": 4,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                21
+            ]
         },
         {
             "id": 70,
@@ -622,40 +639,34 @@
             "id": 74,
             "ownerPartId": 13,
             "blockingPartIds": [
-                3,
-                10
+                3
             ]
         },
         {
             "id": 75,
             "ownerPartId": 12,
             "blockingPartIds": [
-                3,
-                18
+                3
             ]
         },
         {
             "id": 76,
             "ownerPartId": 1,
             "blockingPartIds": [
-                3,
-                5
+                3
             ]
         },
         {
             "id": 77,
             "ownerPartId": 19,
             "blockingPartIds": [
-                3,
-                8
+                3
             ]
         },
         {
             "id": 78,
             "ownerPartId": 3,
-            "blockingPartIds": [
-                10
-            ]
+            "blockingPartIds": []
         },
         {
             "id": 79,
@@ -665,20 +676,19 @@
         {
             "id": 80,
             "ownerPartId": 4,
-            "blockingPartIds": []
+            "blockingPartIds": [
+                21
+            ]
         },
         {
             "id": 81,
             "ownerPartId": 17,
-            "blockingPartIds": [
-                4
-            ]
+            "blockingPartIds": []
         },
         {
             "id": 82,
             "ownerPartId": 11,
             "blockingPartIds": [
-                4,
                 17
             ]
         },
@@ -686,6 +696,7 @@
             "id": 83,
             "ownerPartId": 6,
             "blockingPartIds": [
+                0,
                 3,
                 4
             ]

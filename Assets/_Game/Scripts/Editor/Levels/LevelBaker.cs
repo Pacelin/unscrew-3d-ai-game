@@ -14,8 +14,9 @@ namespace Unscrew.Editor.Levels
     /// <summary>
     /// Bakes the bolt blocking graph of Assets/UnscrewFirst20 levels into
     /// Assets/_Game/Data/Levels/Level_XX.json (Unscrew.Core.LevelDefinition).
-    /// A part blocks a bolt when it lies in front of the bolt head along the bolt axis
-    /// (sphere cast "outwards" from the head against non-convex part MeshColliders).
+    /// Rule "the unscrewing path must be clear": a sphere of the bolt head radius is swept from the
+    /// head along the bolt's outward axis over the distance the bolt travels when unscrewed
+    /// (bolt length + margin); every part other than the owner touched by the sweep blocks the bolt.
     /// </summary>
     public static class LevelBaker
     {
@@ -25,23 +26,21 @@ namespace Unscrew.Editor.Levels
         public const string OutputDir = "Assets/_Game/Data/Levels";
         public const string OverridesPath = OutputDir + "/overrides.json";
 
-        /// <summary>Cast sphere radius as a fraction of the bolt head radius.</summary>
-        public static float RadiusFactor = 0.6f;
-        /// <summary>Length of the "extraction corridor" in front of the head, in head radii (levels are ~14 units wide, head radius ~0.4-0.5).</summary>
-        public static float MaxDistanceHeads = 4f;
-        /// <summary>
-        /// Hits closer than this (fraction of the head radius) are treated as parts merely touching
-        /// the head (bolt on a seam), not covering it.
-        /// </summary>
-        public static float ContactSkin = 0.5f;
-        /// <summary>Also require the head to be visible from outside (see LeastOccludedView).</summary>
-        public static bool UseVisibility = true;
-        /// <summary>Half-angle of the cone around the bolt axis from which the player can see/tap the head.</summary>
-        public static float ViewConeDegrees = 75f;
+        /// <summary>Extra sweep distance as a fraction of the bolt length (sweep distance = length * (1 + margin)).</summary>
+        public static float SweepMargin = 0.15f;
 
-        // Screw004 mesh: long axis is local +Y, the head is at the top (max Y, radius ~0.033),
-        // the shaft goes down to min Y. The bolt prefab rotates the mesh by 90 deg around X,
-        // so "outwards" == bolt transform.forward.
+        public enum SweepStart
+        {
+            /// <summary>Sphere centre at the centre of the head (on the axis, mid-height of the head).</summary>
+            HeadCenter,
+            /// <summary>Sphere centre one radius above the seat plane (head underside): the start sphere does not dip into the surface the head sits on.</summary>
+            SeatTangent,
+        }
+
+        public static SweepStart SweepStartMode = SweepStart.SeatTangent;
+
+        // Screw004 mesh: long axis is local +Y, the head is at the top (max Y), the shaft goes down
+        // to min Y. The bolt prefab rotates the mesh by 90 deg around X, so "outwards" == bolt transform.forward.
 
         [MenuItem("Unscrew/Bake Levels")]
         public static void BakeMenu()
@@ -53,10 +52,18 @@ namespace Unscrew.Editor.Levels
         /// <summary>Bakes all 20 levels, writes JSON files and returns a markdown summary table.</summary>
         public static string BakeAll()
         {
+            var results = BakeAllResults(write: true);
+            return BuildTable(results);
+        }
+
+        /// <summary>Bakes all levels; with write=true writes the JSON files and re-validates them as read back by JsonUtility.</summary>
+        public static List<BakeResult> BakeAllResults(bool write)
+        {
             var results = new List<BakeResult>();
             var overrides = LoadOverrides();
             for (int n = 1; n <= LevelCount; n++)
-                results.Add(BakeLevel(n, overrides, write: true));
+                results.Add(BakeLevel(n, overrides, write));
+            if (!write) return results;
             AssetDatabase.Refresh();
 
             // Re-read written files and validate them exactly as the runtime will.
@@ -66,10 +73,103 @@ namespace Unscrew.Editor.Levels
                 var def = JsonUtility.FromJson<LevelDefinition>(text);
                 r.valid = Simulate(def, out _, out _);
             }
-            return BuildTable(results);
+            return results;
         }
 
         public static string OutputPath(int number) => $"{OutputDir}/Level_{number:00}.json";
+
+        // ---------------------------------------------------------------- bolt geometry
+
+        /// <summary>Radial profile of the bolt mesh (Screw004) in mesh-local space.</summary>
+        public sealed class ScrewProfile
+        {
+            public Vector2 centerXZ;
+            public float minY, maxY;
+            /// <summary>Underside of the head (seat plane): min Y of vertices wider than 80% of the head radius.</summary>
+            public float headMinY;
+            public float headRadius, shaftRadius;
+            public float HeadHeight => maxY - headMinY;
+            public float ShaftLength => headMinY - minY;
+            public float Length => maxY - minY;
+        }
+
+        static readonly Dictionary<Mesh, ScrewProfile> s_profiles = new Dictionary<Mesh, ScrewProfile>();
+
+        public static ScrewProfile GetProfile(Mesh mesh)
+        {
+            if (s_profiles.TryGetValue(mesh, out var p)) return p;
+            var b = mesh.bounds;
+            var verts = mesh.vertices;
+            p = new ScrewProfile { centerXZ = new Vector2(b.center.x, b.center.z), minY = b.min.y, maxY = b.max.y, headMinY = b.max.y };
+            foreach (var v in verts)
+                p.headRadius = Mathf.Max(p.headRadius, new Vector2(v.x - p.centerXZ.x, v.z - p.centerXZ.y).magnitude);
+            foreach (var v in verts)
+            {
+                float r = new Vector2(v.x - p.centerXZ.x, v.z - p.centerXZ.y).magnitude;
+                if (r > 0.8f * p.headRadius) p.headMinY = Mathf.Min(p.headMinY, v.y);
+                else p.shaftRadius = Mathf.Max(p.shaftRadius, r);
+            }
+            s_profiles[mesh] = p;
+            return p;
+        }
+
+        /// <summary>World-space geometry of one bolt instance.</summary>
+        public struct BoltGeometry
+        {
+            /// <summary>Unit outward axis (== bolt transform.forward).</summary>
+            public Vector3 axis;
+            /// <summary>Unit vectors perpendicular to the axis (mesh-local X and Z).</summary>
+            public Vector3 u, v;
+            /// <summary>Centre of the head underside (where the head sits on the part).</summary>
+            public Vector3 seat;
+            public Vector3 headCenter, headTop, tip;
+            public float headRadius, headHeight, shaftRadius, length, shaftLength;
+
+            public Vector3 OnAxis(float heightAboveSeat) => seat + axis * heightAboveSeat;
+        }
+
+        public static BoltGeometry GetGeometry(Transform boltT)
+        {
+            var mf = boltT.GetComponentInChildren<MeshFilter>();
+            var mt = mf.transform;
+            var p = GetProfile(mf.sharedMesh);
+            float s = mt.lossyScale.x;
+            var g = new BoltGeometry
+            {
+                axis = mt.TransformDirection(Vector3.up).normalized,
+                u = mt.TransformDirection(Vector3.right).normalized,
+                v = mt.TransformDirection(Vector3.forward).normalized,
+                seat = mt.TransformPoint(new Vector3(p.centerXZ.x, p.headMinY, p.centerXZ.y)),
+                headTop = mt.TransformPoint(new Vector3(p.centerXZ.x, p.maxY, p.centerXZ.y)),
+                tip = mt.TransformPoint(new Vector3(p.centerXZ.x, p.minY, p.centerXZ.y)),
+                headRadius = p.headRadius * s,
+                headHeight = p.HeadHeight * s,
+                shaftRadius = p.shaftRadius * s,
+                length = p.Length * s,
+                shaftLength = p.ShaftLength * s,
+            };
+            g.headCenter = g.seat + g.axis * (g.headHeight * 0.5f);
+            return g;
+        }
+
+        /// <summary>The unscrewing sweep of a bolt: sphere centre at start, direction, radius and distance.</summary>
+        public static void GetSweep(BoltGeometry g, out Vector3 origin, out float radius, out float distance)
+        {
+            radius = g.headRadius;
+            origin = SweepStartMode == SweepStart.HeadCenter ? g.headCenter : g.seat + g.axis * radius;
+            distance = g.length * (1f + SweepMargin);
+        }
+
+        /// <summary>Largest penetration depth of a sphere into any of the colliders (0 when only touching).</summary>
+        static float OverlapDepth(SphereCollider probe, Vector3 center, float radius, List<Collider> colliders)
+        {
+            probe.radius = radius / Mathf.Max(1e-6f, probe.transform.lossyScale.x);
+            float best = 0f;
+            foreach (var c in colliders)
+                if (Physics.ComputePenetration(probe, center, Quaternion.identity, c, c.transform.position, c.transform.rotation, out _, out float dist))
+                    best = Mathf.Max(best, dist);
+            return best;
+        }
 
         // ---------------------------------------------------------------- bake
 
@@ -77,16 +177,22 @@ namespace Unscrew.Editor.Levels
         {
             public int number;
             public LevelDefinition definition;
-            /// <summary>Raw raycast blockers before overrides/cycle breaking: boltId -> (partId -> distance).</summary>
+            /// <summary>Raw sweep blockers before overrides/cycle breaking: boltId -> (partId -> sweep distance, or -penetration depth for an initial overlap).</summary>
             public Dictionary<int, Dictionary<int, float>> rawHits = new Dictionary<int, Dictionary<int, float>>();
+            /// <summary>
+            /// Sweep hits with distance 0 (part already overlapping the start sphere): boltId, partId and the
+            /// penetration depth of the start sphere into that part (0 = merely touching).
+            /// </summary>
+            public List<(int bolt, int part, float depth)> initialOverlaps = new List<(int, int, float)>();
+            /// <summary>Rule 1: bolts whose head is inside the owner mesh.</summary>
+            public List<LevelValidator.HeadViolation> headViolations = new List<LevelValidator.HeadViolation>();
             public List<string> brokenCycles = new List<string>();
             public int overridesApplied;
-            /// <summary>Bolts whose head is not visible from outside in the assembled model.</summary>
-            public int hiddenAtStart;
             public int blockedBolts;
             public int startAccessible;
             public int depth;
             public bool valid;
+            public float minHeadRadius = float.MaxValue, maxHeadRadius, minLength = float.MaxValue, maxLength, minHeadHeight = float.MaxValue, maxHeadHeight;
         }
 
         public static BakeResult BakeLevel(int number, OverrideList overrides = null, bool write = false)
@@ -116,9 +222,11 @@ namespace Unscrew.Editor.Levels
 
                 var model = root.transform.Find("Assembly/Model");
                 var colliderToPart = new Dictionary<Collider, int>();
+                var partColliders = new Dictionary<int, List<Collider>>();
                 foreach (var p in src.parts)
                 {
                     var partT = model.GetChild(p.childIndex);
+                    partColliders[p.id] = new List<Collider>();
                     foreach (var mf in partT.GetComponentsInChildren<MeshFilter>())
                     {
                         if (mf.sharedMesh == null) continue;
@@ -126,39 +234,57 @@ namespace Unscrew.Editor.Levels
                         mc.sharedMesh = mf.sharedMesh;
                         mc.convex = false;
                         colliderToPart[mc] = p.id;
+                        partColliders[p.id].Add(mc);
                     }
                 }
                 Physics.SyncTransforms();
                 var physics = scene.GetPhysicsScene();
                 var buffer = new RaycastHit[512];
+                // Probe for penetration depth of initial overlaps; kept far away and not mapped to a part.
+                var probeGo = new GameObject("OverlapProbe");
+                SceneManager.MoveGameObjectToScene(probeGo, scene);
+                probeGo.transform.position = new Vector3(1e4f, 1e4f, 1e4f);
+                var probe = probeGo.AddComponent<SphereCollider>();
 
                 foreach (var b in src.bolts)
                 {
                     var boltT = root.transform.Find(b.nodePath);
                     if (boltT == null) throw new Exception($"Level {number}: bolt node '{b.nodePath}' not found");
-                    GetBoltHead(boltT, out var headTop, out var axis, out var headRadius);
+                    var g = GetGeometry(boltT);
+                    result.minHeadRadius = Mathf.Min(result.minHeadRadius, g.headRadius); result.maxHeadRadius = Mathf.Max(result.maxHeadRadius, g.headRadius);
+                    result.minLength = Mathf.Min(result.minLength, g.length); result.maxLength = Mathf.Max(result.maxLength, g.length);
+                    result.minHeadHeight = Mathf.Min(result.minHeadHeight, g.headHeight); result.maxHeadHeight = Mathf.Max(result.maxHeadHeight, g.headHeight);
 
-                    float r = headRadius * RadiusFactor;
-                    // Sphere starts with its front at the head top; anything overlapping it or
-                    // in front of it along the axis covers the bolt.
-                    var origin = headTop - axis * r;
-                    float skin = headRadius * ContactSkin;
-                    float maxDistance = headRadius * MaxDistanceHeads;
-                    var hits = new Dictionary<int, float>();
-                    int count = physics.SphereCast(origin, r, axis, buffer, maxDistance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
-                    Collect(buffer, count, colliderToPart, b.ownerId, skin, hits);
-                    count = physics.Raycast(headTop - axis * 0.001f, axis, buffer, maxDistance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
-                    Collect(buffer, count, colliderToPart, b.ownerId, skin, hits);
-
-                    // Visibility: the head must be reachable by the player's tap. If every view direction
-                    // inside the cone around the axis is occluded, the parts along the least occluded
-                    // direction also block the bolt.
-                    if (UseVisibility)
+                    // Rule 1: head not inside the owner mesh.
+                    var violation = LevelValidator.CheckHead(g, partColliders[b.ownerId]);
+                    if (violation != null)
                     {
-                        var occluders = LeastOccludedView(physics, buffer, colliderToPart, b.ownerId, headTop - axis * headRadius * 0.3f, axis, headRadius);
-                        if (occluders.Count > 0) result.hiddenAtStart++;
-                        foreach (var kv in occluders)
-                            if (!hits.TryGetValue(kv.Key, out float old) || kv.Value < old) hits[kv.Key] = kv.Value;
+                        violation.level = number; violation.boltId = b.id; violation.ownerPartId = b.ownerId;
+                        result.headViolations.Add(violation);
+                    }
+
+                    // Rule 2: the unscrewing path must be clear.
+                    GetSweep(g, out var origin, out float radius, out float distance);
+                    var hits = new Dictionary<int, float>();
+                    int count = physics.SphereCast(origin, radius, g.axis, buffer, distance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                    if (count == buffer.Length) Debug.LogWarning($"[LevelBaker] Level {number} bolt {b.id}: sweep hit buffer full");
+                    for (int i = 0; i < count; i++)
+                    {
+                        if (!colliderToPart.TryGetValue(buffer[i].collider, out int part) || part == b.ownerId) continue;
+                        // Weight for cycle breaking (the largest weight is dropped first): sweep distance,
+                        // or minus the penetration depth for an initial overlap, so the shallowest contact goes first.
+                        float d = buffer[i].distance;
+                        if (d <= 0f)
+                        {
+                            int k = result.initialOverlaps.FindIndex(o => o.bolt == b.id && o.part == part);
+                            if (k < 0)
+                            {
+                                result.initialOverlaps.Add((b.id, part, OverlapDepth(probe, origin, radius, partColliders[part])));
+                                k = result.initialOverlaps.Count - 1;
+                            }
+                            d = -result.initialOverlaps[k].depth;
+                        }
+                        if (!hits.TryGetValue(part, out float old) || d < old) hits[part] = d;
                     }
                     result.rawHits[b.id] = hits;
                     def.bolts[b.id].blockingPartIds = hits.Keys.OrderBy(k => k).ToArray();
@@ -187,90 +313,12 @@ namespace Unscrew.Editor.Levels
             return result;
         }
 
-        /// <summary>World-space head top point, outward axis and head radius of a bolt instance.</summary>
-        public static void GetBoltHead(Transform boltT, out Vector3 headTop, out Vector3 axis, out float headRadius)
-        {
-            var mf = boltT.GetComponentInChildren<MeshFilter>();
-            var mt = mf.transform;
-            var bounds = mf.sharedMesh.bounds;
-            headTop = mt.TransformPoint(new Vector3(bounds.center.x, bounds.max.y, bounds.center.z));
-            axis = mt.TransformDirection(Vector3.up).normalized;
-            headRadius = Mathf.Max(bounds.extents.x, bounds.extents.z) * mt.lossyScale.x;
-        }
-
-        static List<Vector3> s_viewDirs;
-
-        /// <summary>Unit directions evenly spread over the sphere (Fibonacci lattice).</summary>
-        static List<Vector3> ViewDirections()
-        {
-            if (s_viewDirs != null) return s_viewDirs;
-            const int n = 400;
-            s_viewDirs = new List<Vector3>(n);
-            for (int i = 0; i < n; i++)
-            {
-                float y = 1f - 2f * (i + 0.5f) / n;
-                float rr = Mathf.Sqrt(1f - y * y);
-                float phi = i * 2.39996323f;
-                s_viewDirs.Add(new Vector3(Mathf.Cos(phi) * rr, y, Mathf.Sin(phi) * rr));
-            }
-            return s_viewDirs;
-        }
-
-        /// <summary>
-        /// Looks at the head from every direction within ViewConeDegrees of the bolt axis.
-        /// Returns an empty map if the head is visible from some direction; otherwise the parts
-        /// (with distance from the head) along the direction with the fewest occluding parts
-        /// (ties: closest to the axis).
-        /// </summary>
-        static Dictionary<int, float> LeastOccludedView(PhysicsScene physics, RaycastHit[] buffer, Dictionary<Collider, int> colliderToPart,
-            int owner, Vector3 target, Vector3 axis, float headRadius)
-        {
-            const float far = 60f;
-            float minDot = Mathf.Cos(ViewConeDegrees * Mathf.Deg2Rad);
-            Dictionary<int, float> best = null;
-            float bestDot = -1f;
-            foreach (var d in ViewDirections())
-            {
-                float dot = Vector3.Dot(d, axis);
-                if (dot < minDot) continue;
-                var from = target + d * far;
-                int count = physics.Raycast(from, -d, buffer, far - headRadius * 0.6f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
-                var parts = new Dictionary<int, float>();
-                bool ownerOnly = true;
-                for (int i = 0; i < count; i++)
-                {
-                    if (!colliderToPart.TryGetValue(buffer[i].collider, out int part)) continue;
-                    if (part == owner) continue;
-                    ownerOnly = false;
-                    float distFromHead = far - buffer[i].distance;
-                    if (!parts.TryGetValue(part, out float old) || distFromHead < old) parts[part] = distFromHead;
-                }
-                if (ownerOnly && count > 0) continue; // the owner itself hides the head from this side
-                if (parts.Count == 0) return parts;  // visible
-                if (best == null || parts.Count < best.Count || (parts.Count == best.Count && dot > bestDot))
-                {
-                    best = parts; bestDot = dot;
-                }
-            }
-            return best ?? new Dictionary<int, float>();
-        }
-
-        static void Collect(RaycastHit[] buffer, int count, Dictionary<Collider, int> colliderToPart, int owner, float skin, Dictionary<int, float> hits)
-        {
-            for (int i = 0; i < count; i++)
-            {
-                if (!colliderToPart.TryGetValue(buffer[i].collider, out int part) || part == owner) continue;
-                float d = buffer[i].distance;
-                if (skin > 0f && d < skin) continue;
-                if (!hits.TryGetValue(part, out float old) || d < old) hits[part] = d;
-            }
-        }
-
         // ---------------------------------------------------------------- cycles
 
         /// <summary>
         /// While the level cannot be fully disassembled, find a cycle among stuck parts
-        /// (part P -> part Q when Q blocks a bolt of P) and drop the edge whose blocker is farthest from the bolt.
+        /// (part P -> part Q when Q blocks a bolt of P) and drop the edge whose blocker is farthest along the sweep
+        /// (initial overlaps count as negative distance = -penetration depth, so the shallowest contact goes first).
         /// </summary>
         static void BreakCycles(LevelDefinition def, BakeResult result)
         {
@@ -300,7 +348,7 @@ namespace Unscrew.Editor.Levels
                 if (cycle == null)
                     throw new Exception($"Level {def.number}: stuck without a cycle (inconsistent data)");
 
-                int bestP = -1, bestQ = -1; float bestD = -1f;
+                int bestP = -1, bestQ = -1; float bestD = float.NegativeInfinity;
                 for (int i = 0; i < cycle.Count; i++)
                 {
                     int p = cycle[i], q = cycle[(i + 1) % cycle.Count];
@@ -310,7 +358,7 @@ namespace Unscrew.Editor.Levels
                 foreach (var b in def.bolts)
                     if (b.ownerPartId == bestP && b.blockingPartIds.Contains(bestQ))
                         b.blockingPartIds = b.blockingPartIds.Where(x => x != bestQ).ToArray();
-                result.brokenCycles.Add($"cycle [{string.Join("->", cycle)}->{cycle[0]}]: dropped part {bestQ} blocking part {bestP} (dist {bestD:0.00})");
+                result.brokenCycles.Add($"cycle [{string.Join("->", cycle)}->{cycle[0]}]: dropped part {bestQ} blocking part {bestP} ({(bestD >= 0f ? "dist " : "initial overlap, depth ")}{Mathf.Abs(bestD).ToString("0.000", System.Globalization.CultureInfo.InvariantCulture)})");
             }
             throw new Exception($"Level {def.number}: cycle breaking did not converge");
         }
@@ -409,6 +457,12 @@ namespace Unscrew.Editor.Levels
         [Serializable] sealed class SourceBolt { public int id; public int ownerId; public string nodePath; }
         [Serializable] sealed class SourceLevel { public int number; public int[] allowedBoltPaletteIndices; public SourcePart[] parts; public SourceBolt[] bolts; }
 
+        /// <summary>Transform of part partId inside an instantiated Level_XX prefab.</summary>
+        public static Transform PartTransform(Transform levelRoot, int number, int partId)
+        {
+            return levelRoot.Find("Assembly/Model").GetChild(LoadSource(number).parts[partId].childIndex);
+        }
+
         static SourceLevel LoadSource(int number)
         {
             var path = $"{SourceDataDir}/Level_{number:00}.json";
@@ -426,12 +480,12 @@ namespace Unscrew.Editor.Levels
         {
             var sb = new StringBuilder();
             var list = results.ToList();
-            sb.AppendLine("| Уровень | Деталей | Болтов | Скрыто в сборке | Заблокировано | Доступно на старте | Глубина | Разорвано рёбер | Overrides | Валиден |");
-            sb.AppendLine("| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: |");
+            sb.AppendLine("| Уровень | Деталей | Болтов | Заблокировано | Доступно на старте | Глубина | Разорвано рёбер | Нач. пересечений | Нарушений правила 1 | Overrides | Валиден |");
+            sb.AppendLine("| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: |");
             foreach (var r in list)
             {
                 int bolts = r.definition.bolts.Length;
-                sb.AppendLine($"| {r.number} | {r.definition.parts.Length} | {bolts} | {r.hiddenAtStart} | {r.blockedBolts} | {r.startAccessible} ({100f * r.startAccessible / bolts:0}%) | {r.depth} | {r.brokenCycles.Count} | {r.overridesApplied} | {(r.valid ? "да" : "НЕТ")} |");
+                sb.AppendLine($"| {r.number} | {r.definition.parts.Length} | {bolts} | {r.blockedBolts} | {r.startAccessible} ({100f * r.startAccessible / bolts:0}%) | {r.depth} | {r.brokenCycles.Count} | {r.initialOverlaps.Count} | {r.headViolations.Count} | {r.overridesApplied} | {(r.valid ? "да" : "НЕТ")} |");
             }
             sb.AppendLine();
             sb.AppendLine("Разорванные циклы (part P -> part Q: Q блокирует болт детали P):");

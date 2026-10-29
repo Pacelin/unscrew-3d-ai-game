@@ -18,13 +18,44 @@ namespace Unscrew.Editor.Levels
         static readonly Vector3 Offset = new Vector3(1000f, 0f, 0f);
 
         /// <summary>Renders Level_XX with the baked definition from OutputDir into pngPath.</summary>
-        public static string Capture(int number, string pngPath, float[] yaws = null, int size = 512, float pitch = 15f, bool xray = false)
+        public static string Capture(int number, string pngPath, float[] yaws = null, int size = 512, float pitch = 15f, bool xray = false, int[] sweepBolts = null)
         {
             var def = JsonUtility.FromJson<LevelDefinition>(File.ReadAllText(LevelBaker.OutputPath(number)));
-            return Capture(number, def, pngPath, yaws, size, pitch, xray);
+            return Capture(number, def, pngPath, yaws, size, pitch, xray, sweepBolts);
         }
 
-        public static string Capture(int number, LevelDefinition def, string pngPath, float[] yaws, int size, float pitch, bool xray)
+        /// <summary>
+        /// Close-up of one bolt: camera orbits the bolt head (yaws are around the bolt axis), parts of
+        /// the model within reach are rendered, the unscrewing sweep is drawn as a translucent capsule.
+        /// </summary>
+        public static string CaptureBolt(int number, int boltId, string pngPath, float[] yaws = null, int size = 512, float tilt = 55f)
+        {
+            var def = JsonUtility.FromJson<LevelDefinition>(File.ReadAllText(LevelBaker.OutputPath(number)));
+            return Capture(number, def, pngPath, yaws ?? new[] { 0f, 120f, 240f }, size, tilt, false, new[] { boltId }, closeUpBolt: boltId);
+        }
+
+        /// <summary>Translucent capsule = sphere sweep from origin along dir over distance.</summary>
+        static void DrawSweep(Scene scene, Vector3 origin, Vector3 dir, float radius, float distance, Material mat)
+        {
+            var end = origin + dir * distance;
+            foreach (var c in new[] { origin, end })
+            {
+                var s = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                Object.DestroyImmediate(s.GetComponent<Collider>());
+                SceneManager.MoveGameObjectToScene(s, scene);
+                s.transform.position = c; s.transform.localScale = Vector3.one * radius * 2f;
+                s.GetComponent<Renderer>().sharedMaterial = mat;
+            }
+            var cyl = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            Object.DestroyImmediate(cyl.GetComponent<Collider>());
+            SceneManager.MoveGameObjectToScene(cyl, scene);
+            cyl.transform.SetPositionAndRotation((origin + end) * 0.5f, Quaternion.FromToRotation(Vector3.up, dir));
+            cyl.transform.localScale = new Vector3(radius * 2f, distance * 0.5f, radius * 2f);
+            cyl.GetComponent<Renderer>().sharedMaterial = mat;
+        }
+
+        public static string Capture(int number, LevelDefinition def, string pngPath, float[] yaws, int size, float pitch, bool xray,
+            int[] sweepBolts = null, int closeUpBolt = -1)
         {
             yaws = yaws ?? new[] { 0f, 120f, 240f };
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Additive);
@@ -68,11 +99,44 @@ namespace Unscrew.Editor.Levels
                 }
                 var green = Mat(new Color(0.1f, 0.9f, 0.2f));
                 var red = Mat(new Color(0.95f, 0.1f, 0.1f));
+                Material sweepMat = null;
+                if (sweepBolts != null && sweepBolts.Length > 0)
+                {
+                    var c = new Color(1f, 0.85f, 0.1f, 0.35f);
+                    if (srp)
+                    {
+                        sweepMat = new Material(shader);
+                        sweepMat.SetFloat("_Surface", 1f);
+                        sweepMat.SetFloat("_Blend", 0f);
+                        sweepMat.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                        sweepMat.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                        sweepMat.SetFloat("_ZWrite", 0f);
+                        sweepMat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                        sweepMat.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+                    }
+                    else sweepMat = new Material(Shader.Find("Sprites/Default"));
+                    sweepMat.color = c;
+                    if (sweepMat.HasProperty("_BaseColor")) sweepMat.SetColor("_BaseColor", c);
+                    materials.Add(sweepMat);
+                }
+                Vector3 closeTarget = Vector3.zero, closeAxis = Vector3.forward, closeU = Vector3.right;
+                float closeDist = 0f;
 
                 var boltsRoot = root.transform.Find("Assembly/Bolts");
                 foreach (Transform b in boltsRoot)
                 {
                     int id = int.Parse(b.name.Substring(5, 3));
+                    if (sweepMat != null && System.Array.IndexOf(sweepBolts, id) >= 0)
+                    {
+                        var g = LevelBaker.GetGeometry(b);
+                        LevelBaker.GetSweep(g, out var origin, out float radius, out float distance);
+                        DrawSweep(scene, origin, g.axis, radius, distance, sweepMat);
+                        if (id == closeUpBolt)
+                        {
+                            closeTarget = g.headCenter; closeAxis = g.axis; closeU = g.u;
+                            closeDist = (distance + 2f * radius) * 4f;
+                        }
+                    }
                     var mat = BoardRules.IsAccessible(def, removed, id) ? green : red;
                     foreach (var r in b.GetComponentsInChildren<Renderer>())
                     {
@@ -83,6 +147,18 @@ namespace Unscrew.Editor.Levels
                 }
 
                 var model = root.transform.Find("Assembly/Model");
+                if (closeUpBolt >= 0)
+                {
+                    // Close-up: only the owner, the bolt's blockers and the bolt itself.
+                    var keep = new HashSet<Transform>();
+                    var bd = def.bolts[closeUpBolt];
+                    keep.Add(LevelBaker.PartTransform(root.transform, number, bd.ownerPartId));
+                    foreach (var q in bd.blockingPartIds) keep.Add(LevelBaker.PartTransform(root.transform, number, q));
+                    for (int i = 0; i < model.childCount; i++)
+                        if (!keep.Contains(model.GetChild(i))) model.GetChild(i).gameObject.SetActive(false);
+                    foreach (Transform b in boltsRoot)
+                        if (int.Parse(b.name.Substring(5, 3)) != closeUpBolt) b.gameObject.SetActive(false);
+                }
                 Bounds bounds = new Bounds(Offset, Vector3.zero);
                 bool first = true;
                 foreach (var r in model.GetComponentsInChildren<Renderer>())
@@ -115,7 +191,16 @@ namespace Unscrew.Editor.Levels
                 {
                     // Yaw 0 looks along +Z (front view, as the game camera).
                     var rot = Quaternion.Euler(pitch, yaws[i], 0f);
-                    camGo.transform.SetPositionAndRotation(bounds.center - rot * Vector3.forward * dist, rot);
+                    if (closeDist > 0f)
+                    {
+                        // Orbit around the bolt axis; pitch = angle between the view and the axis.
+                        var side = Quaternion.AngleAxis(yaws[i], closeAxis) * closeU;
+                        var fromDir = Quaternion.AngleAxis(pitch, Vector3.Cross(closeAxis, side)) * closeAxis;
+                        rot = Quaternion.LookRotation(-fromDir, closeAxis);
+                        camGo.transform.SetPositionAndRotation(closeTarget + fromDir * closeDist, rot);
+                    }
+                    else
+                        camGo.transform.SetPositionAndRotation(bounds.center - rot * Vector3.forward * dist, rot);
                     lightGo.transform.rotation = rot * Quaternion.Euler(20f, -30f, 0f);
                     cam.Render();
                     RenderTexture.active = rt;
