@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <CoreModule>Economy</CoreModule>
+  </PropertyGroup>
+  <Import Project="../CoreModule.props" />
+</Project>

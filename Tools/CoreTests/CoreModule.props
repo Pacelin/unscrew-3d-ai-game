@@ -1,0 +1,38 @@
+<!--
+  Shared settings for out-of-Unity test projects of Unscrew.Core.
+  Each module project compiles ONLY Contracts + its own module + its own tests,
+  so parallel agents never break each other's builds.
+  Set CoreModule (Board, Collect, ...) before importing. CoreModule=All compiles everything.
+-->
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <!-- Unity 2022.3 compiles C# 9: keep the same language level here. -->
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <GameRoot>$(MSBuildThisFileDirectory)../../Assets/_Game/</GameRoot>
+    <DefineConstants>$(DefineConstants);CORE_DOTNET_TESTS</DefineConstants>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(CoreModule)' != 'All'">
+    <Compile Include="$(GameRoot)Scripts/Core/Contracts/**/*.cs" />
+    <Compile Include="$(GameRoot)Scripts/Core/$(CoreModule)/**/*.cs" />
+    <Compile Include="$(GameRoot)Tests/Core/$(CoreModule)/**/*.cs" />
+    <Compile Include="$(GameRoot)Tests/Core/Shared/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(CoreModule)' == 'All'">
+    <Compile Include="$(GameRoot)Scripts/Core/**/*.cs" />
+    <Compile Include="$(GameRoot)Tests/Core/**/*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+  </ItemGroup>
+</Project>

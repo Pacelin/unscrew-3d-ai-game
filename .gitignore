@@ -36,3 +36,7 @@ cmake-build-*/
 
 # IntelliJ build output
 out/
+### Out-of-Unity Core test projects (Tools/CoreTests)
+!/Tools/**/*.csproj
+/Tools/**/bin/
+/Tools/**/obj/
