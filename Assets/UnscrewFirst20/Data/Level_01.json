@@ -1,0 +1,247 @@
+{
+    "number": 1,
+    "sourceCampaignIndex": 0,
+    "sourceModelId": 1092,
+    "sourceName": "modelbatch_lollipop_01",
+    "modelPosition": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "modelEulerDegrees": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "rootEulerDegrees": [
+        5.0,
+        0.0,
+        0.0
+    ],
+    "modelScale": 15.0,
+    "rootScale": 1.2000000476837159,
+    "allowedBoltPaletteIndices": [
+        1,
+        2
+    ],
+    "parts": [
+        {
+            "id": 0,
+            "childIndex": 0,
+            "sourceLayer": 1,
+            "boltIds": [
+                0,
+                1,
+                2
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "P00_RaspberryCoreAndSwirl",
+            "nodePath": "Assembly/Model/P00_RaspberryCoreAndSwirl"
+        },
+        {
+            "id": 1,
+            "childIndex": 1,
+            "sourceLayer": 1,
+            "boltIds": [
+                3,
+                4
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "P01_LemonSwirl",
+            "nodePath": "Assembly/Model/P01_LemonSwirl"
+        },
+        {
+            "id": 2,
+            "childIndex": 2,
+            "sourceLayer": 1,
+            "boltIds": [
+                5,
+                6
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "P02_MintSwirl",
+            "nodePath": "Assembly/Model/P02_MintSwirl"
+        },
+        {
+            "id": 3,
+            "childIndex": 3,
+            "sourceLayer": 2,
+            "boltIds": [
+                7,
+                8
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "P03_PaperStick",
+            "nodePath": "Assembly/Model/P03_PaperStick"
+        }
+    ],
+    "bolts": [
+        {
+            "id": 0,
+            "ownerId": 0,
+            "position": [
+                -1.4930295944213868,
+                4.185245513916016,
+                -0.6193533539772034
+            ],
+            "eulerDegrees": [
+                334.77294921875,
+                192.86080932617188,
+                331.8229064941406
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_000_Owner_000"
+        },
+        {
+            "id": 1,
+            "ownerId": 0,
+            "position": [
+                -2.8276796340942385,
+                1.9209572076797486,
+                -0.6161791682243347
+            ],
+            "eulerDegrees": [
+                1.2943192720413209,
+                194.3282470703125,
+                1.3343616878103149e-8
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_001_Owner_000"
+        },
+        {
+            "id": 2,
+            "ownerId": 0,
+            "position": [
+                -1.4155571460723878,
+                4.321602821350098,
+                0.5653470158576965
+            ],
+            "eulerDegrees": [
+                335.0539855957031,
+                346.89947509765627,
+                208.88861083984376
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_002_Owner_000"
+        },
+        {
+            "id": 3,
+            "ownerId": 1,
+            "position": [
+                -0.6200931668281555,
+                -1.1105091571807862,
+                -0.692970871925354
+            ],
+            "eulerDegrees": [
+                25.672218322753908,
+                188.36273193359376,
+                198.74330139160157
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_003_Owner_001"
+        },
+        {
+            "id": 4,
+            "ownerId": 1,
+            "position": [
+                -0.5939238667488098,
+                -1.1839693784713746,
+                0.6891133189201355
+            ],
+            "eulerDegrees": [
+                22.211265563964845,
+                352.5243835449219,
+                340.8570556640625
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_004_Owner_001"
+        },
+        {
+            "id": 5,
+            "ownerId": 2,
+            "position": [
+                2.7653658390045168,
+                2.000161647796631,
+                -0.7035338878631592
+            ],
+            "eulerDegrees": [
+                356.6083679199219,
+                151.5852508544922,
+                83.7596206665039
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_005_Owner_002"
+        },
+        {
+            "id": 6,
+            "ownerId": 2,
+            "position": [
+                3.002469062805176,
+                1.6325749158859254,
+                0.5544841289520264
+            ],
+            "eulerDegrees": [
+                0.6527548432350159,
+                20.967073440551759,
+                88.29713439941406
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_006_Owner_002"
+        },
+        {
+            "id": 7,
+            "ownerId": 3,
+            "position": [
+                2.2225803419928526e-9,
+                -3.375,
+                -0.23707664012908936
+            ],
+            "eulerDegrees": [
+                0.0,
+                180.0,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_007_Owner_003"
+        },
+        {
+            "id": 8,
+            "ownerId": 3,
+            "position": [
+                -1.3969838619232178e-8,
+                -4.575000286102295,
+                0.23707664012908936
+            ],
+            "eulerDegrees": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_008_Owner_003"
+        }
+    ],
+    "sourcePrefab": "Assets/UnscrewFirst20/Models/modelbatch_lollipop_01/prefab/modelbatch_lollipop_01.prefab",
+    "prefab": "Assets/UnscrewFirst20/Levels/Level_01.prefab",
+    "glb": "GLB/Levels/Level_01.glb"
+}

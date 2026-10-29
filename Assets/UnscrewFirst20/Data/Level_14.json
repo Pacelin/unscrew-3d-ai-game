@@ -1,0 +1,2225 @@
+{
+    "number": 14,
+    "sourceCampaignIndex": 13,
+    "sourceModelId": 2012,
+    "sourceName": "rcv_014",
+    "modelPosition": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "modelEulerDegrees": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "rootEulerDegrees": [
+        0.0,
+        0.0,
+        0.0
+    ],
+    "modelScale": 1.1455000638961793,
+    "rootScale": 0.9397587180137634,
+    "allowedBoltPaletteIndices": [
+        4,
+        5,
+        0,
+        7,
+        6,
+        1,
+        3,
+        8,
+        9
+    ],
+    "parts": [
+        {
+            "id": 0,
+            "childIndex": 0,
+            "sourceLayer": 0,
+            "boltIds": [
+                0,
+                1
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_000_1",
+            "nodePath": "Assembly/Model/Owner_000_1"
+        },
+        {
+            "id": 1,
+            "childIndex": 1,
+            "sourceLayer": 0,
+            "boltIds": [
+                2,
+                3
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_001_2",
+            "nodePath": "Assembly/Model/Owner_001_2"
+        },
+        {
+            "id": 2,
+            "childIndex": 2,
+            "sourceLayer": 0,
+            "boltIds": [
+                4,
+                5
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_002_3",
+            "nodePath": "Assembly/Model/Owner_002_3"
+        },
+        {
+            "id": 3,
+            "childIndex": 3,
+            "sourceLayer": 0,
+            "boltIds": [
+                6
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_003_4",
+            "nodePath": "Assembly/Model/Owner_003_4"
+        },
+        {
+            "id": 4,
+            "childIndex": 4,
+            "sourceLayer": 0,
+            "boltIds": [
+                7
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_004_5",
+            "nodePath": "Assembly/Model/Owner_004_5"
+        },
+        {
+            "id": 5,
+            "childIndex": 5,
+            "sourceLayer": 0,
+            "boltIds": [
+                8
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_005_6",
+            "nodePath": "Assembly/Model/Owner_005_6"
+        },
+        {
+            "id": 6,
+            "childIndex": 6,
+            "sourceLayer": 0,
+            "boltIds": [
+                9
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_006_7",
+            "nodePath": "Assembly/Model/Owner_006_7"
+        },
+        {
+            "id": 7,
+            "childIndex": 7,
+            "sourceLayer": 0,
+            "boltIds": [
+                10,
+                11,
+                12
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_007_8",
+            "nodePath": "Assembly/Model/Owner_007_8"
+        },
+        {
+            "id": 8,
+            "childIndex": 8,
+            "sourceLayer": 0,
+            "boltIds": [
+                13,
+                14,
+                15
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_008_9",
+            "nodePath": "Assembly/Model/Owner_008_9"
+        },
+        {
+            "id": 9,
+            "childIndex": 9,
+            "sourceLayer": 0,
+            "boltIds": [
+                16,
+                17,
+                18
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_009_10",
+            "nodePath": "Assembly/Model/Owner_009_10"
+        },
+        {
+            "id": 10,
+            "childIndex": 10,
+            "sourceLayer": 0,
+            "boltIds": [
+                19,
+                20,
+                21
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_010_11",
+            "nodePath": "Assembly/Model/Owner_010_11"
+        },
+        {
+            "id": 11,
+            "childIndex": 11,
+            "sourceLayer": 0,
+            "boltIds": [
+                22,
+                23,
+                24
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_011_12",
+            "nodePath": "Assembly/Model/Owner_011_12"
+        },
+        {
+            "id": 12,
+            "childIndex": 12,
+            "sourceLayer": 0,
+            "boltIds": [
+                25,
+                26,
+                27
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_012_13",
+            "nodePath": "Assembly/Model/Owner_012_13"
+        },
+        {
+            "id": 13,
+            "childIndex": 13,
+            "sourceLayer": 0,
+            "boltIds": [
+                28,
+                29,
+                30
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_013_14",
+            "nodePath": "Assembly/Model/Owner_013_14"
+        },
+        {
+            "id": 14,
+            "childIndex": 14,
+            "sourceLayer": 0,
+            "boltIds": [
+                31,
+                32,
+                33
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_014_15",
+            "nodePath": "Assembly/Model/Owner_014_15"
+        },
+        {
+            "id": 15,
+            "childIndex": 15,
+            "sourceLayer": 0,
+            "boltIds": [
+                34,
+                35
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_015_16",
+            "nodePath": "Assembly/Model/Owner_015_16"
+        },
+        {
+            "id": 16,
+            "childIndex": 16,
+            "sourceLayer": 0,
+            "boltIds": [
+                36,
+                37
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_016_17",
+            "nodePath": "Assembly/Model/Owner_016_17"
+        },
+        {
+            "id": 17,
+            "childIndex": 17,
+            "sourceLayer": 0,
+            "boltIds": [
+                38
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_017_18",
+            "nodePath": "Assembly/Model/Owner_017_18"
+        },
+        {
+            "id": 18,
+            "childIndex": 18,
+            "sourceLayer": 0,
+            "boltIds": [
+                39
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_018_19",
+            "nodePath": "Assembly/Model/Owner_018_19"
+        },
+        {
+            "id": 19,
+            "childIndex": 19,
+            "sourceLayer": 0,
+            "boltIds": [
+                40
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_019_20",
+            "nodePath": "Assembly/Model/Owner_019_20"
+        },
+        {
+            "id": 20,
+            "childIndex": 20,
+            "sourceLayer": 0,
+            "boltIds": [
+                41
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_020_21",
+            "nodePath": "Assembly/Model/Owner_020_21"
+        },
+        {
+            "id": 21,
+            "childIndex": 21,
+            "sourceLayer": 0,
+            "boltIds": [
+                42
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_021_22",
+            "nodePath": "Assembly/Model/Owner_021_22"
+        },
+        {
+            "id": 22,
+            "childIndex": 22,
+            "sourceLayer": 0,
+            "boltIds": [
+                43
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_022_23",
+            "nodePath": "Assembly/Model/Owner_022_23"
+        },
+        {
+            "id": 23,
+            "childIndex": 23,
+            "sourceLayer": 0,
+            "boltIds": [
+                44
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_023_24",
+            "nodePath": "Assembly/Model/Owner_023_24"
+        },
+        {
+            "id": 24,
+            "childIndex": 24,
+            "sourceLayer": 0,
+            "boltIds": [
+                45
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_024_25",
+            "nodePath": "Assembly/Model/Owner_024_25"
+        },
+        {
+            "id": 25,
+            "childIndex": 25,
+            "sourceLayer": 0,
+            "boltIds": [
+                46
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_025_26",
+            "nodePath": "Assembly/Model/Owner_025_26"
+        },
+        {
+            "id": 26,
+            "childIndex": 26,
+            "sourceLayer": 0,
+            "boltIds": [
+                47
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_026_27",
+            "nodePath": "Assembly/Model/Owner_026_27"
+        },
+        {
+            "id": 27,
+            "childIndex": 27,
+            "sourceLayer": 0,
+            "boltIds": [
+                48
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_027_28",
+            "nodePath": "Assembly/Model/Owner_027_28"
+        },
+        {
+            "id": 28,
+            "childIndex": 28,
+            "sourceLayer": 0,
+            "boltIds": [
+                49
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_028_29",
+            "nodePath": "Assembly/Model/Owner_028_29"
+        },
+        {
+            "id": 29,
+            "childIndex": 29,
+            "sourceLayer": 0,
+            "boltIds": [
+                50
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_029_30",
+            "nodePath": "Assembly/Model/Owner_029_30"
+        },
+        {
+            "id": 30,
+            "childIndex": 30,
+            "sourceLayer": 0,
+            "boltIds": [
+                51
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_030_31",
+            "nodePath": "Assembly/Model/Owner_030_31"
+        },
+        {
+            "id": 31,
+            "childIndex": 31,
+            "sourceLayer": 0,
+            "boltIds": [
+                52
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_031_32",
+            "nodePath": "Assembly/Model/Owner_031_32"
+        },
+        {
+            "id": 32,
+            "childIndex": 32,
+            "sourceLayer": 0,
+            "boltIds": [
+                53
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_032_33",
+            "nodePath": "Assembly/Model/Owner_032_33"
+        },
+        {
+            "id": 33,
+            "childIndex": 33,
+            "sourceLayer": 0,
+            "boltIds": [
+                54,
+                55
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_033_34",
+            "nodePath": "Assembly/Model/Owner_033_34"
+        },
+        {
+            "id": 34,
+            "childIndex": 34,
+            "sourceLayer": 0,
+            "boltIds": [
+                56,
+                57
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_034_35",
+            "nodePath": "Assembly/Model/Owner_034_35"
+        },
+        {
+            "id": 35,
+            "childIndex": 35,
+            "sourceLayer": 0,
+            "boltIds": [
+                58,
+                59
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_035_36",
+            "nodePath": "Assembly/Model/Owner_035_36"
+        },
+        {
+            "id": 36,
+            "childIndex": 36,
+            "sourceLayer": 0,
+            "boltIds": [
+                60,
+                61,
+                62,
+                63
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_036_37",
+            "nodePath": "Assembly/Model/Owner_036_37"
+        },
+        {
+            "id": 37,
+            "childIndex": 37,
+            "sourceLayer": 0,
+            "boltIds": [
+                64,
+                65,
+                66
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_037_38",
+            "nodePath": "Assembly/Model/Owner_037_38"
+        },
+        {
+            "id": 38,
+            "childIndex": 38,
+            "sourceLayer": 0,
+            "boltIds": [
+                67,
+                68,
+                69
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_038_39",
+            "nodePath": "Assembly/Model/Owner_038_39"
+        },
+        {
+            "id": 39,
+            "childIndex": 39,
+            "sourceLayer": 0,
+            "boltIds": [
+                70,
+                71,
+                72
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_039_40",
+            "nodePath": "Assembly/Model/Owner_039_40"
+        },
+        {
+            "id": 40,
+            "childIndex": 40,
+            "sourceLayer": 0,
+            "boltIds": [
+                73,
+                74,
+                75
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_040_41",
+            "nodePath": "Assembly/Model/Owner_040_41"
+        },
+        {
+            "id": 41,
+            "childIndex": 41,
+            "sourceLayer": 0,
+            "boltIds": [
+                76,
+                77
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_041_42",
+            "nodePath": "Assembly/Model/Owner_041_42"
+        },
+        {
+            "id": 42,
+            "childIndex": 42,
+            "sourceLayer": 0,
+            "boltIds": [
+                78
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_042_43",
+            "nodePath": "Assembly/Model/Owner_042_43"
+        },
+        {
+            "id": 43,
+            "childIndex": 43,
+            "sourceLayer": 0,
+            "boltIds": [
+                79
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_043_44",
+            "nodePath": "Assembly/Model/Owner_043_44"
+        },
+        {
+            "id": 44,
+            "childIndex": 44,
+            "sourceLayer": 0,
+            "boltIds": [
+                80,
+                81
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_044_45",
+            "nodePath": "Assembly/Model/Owner_044_45"
+        },
+        {
+            "id": 45,
+            "childIndex": 45,
+            "sourceLayer": 0,
+            "boltIds": [
+                82,
+                83
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_045_46",
+            "nodePath": "Assembly/Model/Owner_045_46"
+        },
+        {
+            "id": 46,
+            "childIndex": 46,
+            "sourceLayer": 0,
+            "boltIds": [
+                84,
+                85,
+                86
+            ],
+            "sourceReleaseForce": [
+                0.0,
+                0.0,
+                0.0
+            ],
+            "sourceSpin": true,
+            "name": "Owner_046_47",
+            "nodePath": "Assembly/Model/Owner_046_47"
+        }
+    ],
+    "bolts": [
+        {
+            "id": 0,
+            "ownerId": 0,
+            "position": [
+                -0.5173198580741882,
+                7.212728977203369,
+                0.5911938548088074
+            ],
+            "eulerDegrees": [
+                -84.48551177978516,
+                -134.57177734375,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_000_Owner_000"
+        },
+        {
+            "id": 1,
+            "ownerId": 0,
+            "position": [
+                -0.9007465839385986,
+                7.011382102966309,
+                -1.9912809133529664
+            ],
+            "eulerDegrees": [
+                -84.48551177978516,
+                -134.57177734375,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_001_Owner_000"
+        },
+        {
+            "id": 2,
+            "ownerId": 1,
+            "position": [
+                -3.4048473834991457,
+                6.097413063049316,
+                -1.5310922861099244
+            ],
+            "eulerDegrees": [
+                -52.50477981567383,
+                -86.3471908569336,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_002_Owner_001"
+        },
+        {
+            "id": 3,
+            "ownerId": 1,
+            "position": [
+                -2.9713172912597658,
+                6.307837009429932,
+                0.9547288417816162
+            ],
+            "eulerDegrees": [
+                -52.50477981567383,
+                -86.3471908569336,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_003_Owner_001"
+        },
+        {
+            "id": 4,
+            "ownerId": 2,
+            "position": [
+                2.0780060291290285,
+                6.267875671386719,
+                0.26695939898490908
+            ],
+            "eulerDegrees": [
+                -51.975975036621097,
+                105.2394027709961,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_004_Owner_002"
+        },
+        {
+            "id": 5,
+            "ownerId": 2,
+            "position": [
+                1.7184782028198243,
+                6.015951156616211,
+                -2.229417562484741
+            ],
+            "eulerDegrees": [
+                -44.60369873046875,
+                103.92366027832031,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_005_Owner_002"
+        },
+        {
+            "id": 6,
+            "ownerId": 3,
+            "position": [
+                3.4769341945648195,
+                5.913229942321777,
+                -3.261756420135498
+            ],
+            "eulerDegrees": [
+                -26.448543548583986,
+                112.94367218017578,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_006_Owner_003"
+        },
+        {
+            "id": 7,
+            "ownerId": 4,
+            "position": [
+                4.086996078491211,
+                6.312635898590088,
+                0.7472887635231018
+            ],
+            "eulerDegrees": [
+                -28.185516357421876,
+                90.60009765625,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_007_Owner_004"
+        },
+        {
+            "id": 8,
+            "ownerId": 5,
+            "position": [
+                -4.669610500335693,
+                6.44931173324585,
+                2.1328465938568117
+            ],
+            "eulerDegrees": [
+                -51.011131286621097,
+                -74.58599090576172,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_008_Owner_005"
+        },
+        {
+            "id": 9,
+            "ownerId": 6,
+            "position": [
+                -5.336128234863281,
+                6.089657306671143,
+                -1.6720134019851685
+            ],
+            "eulerDegrees": [
+                -39.82889175415039,
+                -72.83850860595703,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_009_Owner_006"
+        },
+        {
+            "id": 10,
+            "ownerId": 7,
+            "position": [
+                3.5629165172576906,
+                5.399221420288086,
+                0.7864269614219666
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_010_Owner_007"
+        },
+        {
+            "id": 11,
+            "ownerId": 7,
+            "position": [
+                2.9407944679260256,
+                5.085903167724609,
+                -3.1387343406677248
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_011_Owner_007"
+        },
+        {
+            "id": 12,
+            "ownerId": 7,
+            "position": [
+                3.2713518142700197,
+                3.8010988235473635,
+                -0.9982006549835205
+            ],
+            "eulerDegrees": [
+                0.26576727628707888,
+                99.48072814941406,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_012_Owner_007"
+        },
+        {
+            "id": 13,
+            "ownerId": 8,
+            "position": [
+                -4.146727085113525,
+                5.4354777336120609,
+                2.07391357421875
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_013_Owner_008"
+        },
+        {
+            "id": 14,
+            "ownerId": 8,
+            "position": [
+                -4.9232563972473148,
+                5.12468957901001,
+                -1.802305817604065
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_014_Owner_008"
+        },
+        {
+            "id": 15,
+            "ownerId": 8,
+            "position": [
+                -4.533886432647705,
+                3.88849139213562,
+                0.3696344494819641
+            ],
+            "eulerDegrees": [
+                -0.26577481627464297,
+                -80.51927185058594,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_015_Owner_008"
+        },
+        {
+            "id": 16,
+            "ownerId": 9,
+            "position": [
+                3.280923843383789,
+                1.2639424800872803,
+                -0.8694323301315308
+            ],
+            "eulerDegrees": [
+                0.26576727628707888,
+                99.48072814941406,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_016_Owner_009"
+        },
+        {
+            "id": 17,
+            "ownerId": 9,
+            "position": [
+                3.323970317840576,
+                -1.5609480142593384,
+                -0.5338671803474426
+            ],
+            "eulerDegrees": [
+                0.26576727628707888,
+                99.48072814941406,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_017_Owner_009"
+        },
+        {
+            "id": 18,
+            "ownerId": 9,
+            "position": [
+                3.349759340286255,
+                -4.667196273803711,
+                -0.2919633686542511
+            ],
+            "eulerDegrees": [
+                0.26576727628707888,
+                99.48072814941406,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_018_Owner_009"
+        },
+        {
+            "id": 19,
+            "ownerId": 10,
+            "position": [
+                -4.524567127227783,
+                0.9320771098136902,
+                0.5086957216262817
+            ],
+            "eulerDegrees": [
+                -0.2657821774482727,
+                -80.5192642211914,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_019_Owner_010"
+        },
+        {
+            "id": 20,
+            "ownerId": 10,
+            "position": [
+                -4.497744083404541,
+                -2.328341484069824,
+                0.7611290812492371
+            ],
+            "eulerDegrees": [
+                -0.2657821774482727,
+                -80.5192642211914,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_020_Owner_010"
+        },
+        {
+            "id": 21,
+            "ownerId": 10,
+            "position": [
+                -4.485377788543701,
+                -5.267106056213379,
+                0.9179368019104004
+            ],
+            "eulerDegrees": [
+                -0.2657821774482727,
+                -80.5192642211914,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_021_Owner_010"
+        },
+        {
+            "id": 22,
+            "ownerId": 11,
+            "position": [
+                3.193469762802124,
+                -7.378353595733643,
+                -2.4240427017211916
+            ],
+            "eulerDegrees": [
+                85.52185821533203,
+                6.0853705406188969,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_022_Owner_011"
+        },
+        {
+            "id": 23,
+            "ownerId": 11,
+            "position": [
+                2.927300214767456,
+                -3.7792975902557375,
+                -2.7878916263580324
+            ],
+            "eulerDegrees": [
+                4.470221042633057,
+                -170.4984893798828,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_023_Owner_011"
+        },
+        {
+            "id": 24,
+            "ownerId": 11,
+            "position": [
+                2.9150731563568117,
+                -0.47944360971450808,
+                -3.0474116802215578
+            ],
+            "eulerDegrees": [
+                4.470221042633057,
+                -170.4984893798828,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_024_Owner_011"
+        },
+        {
+            "id": 25,
+            "ownerId": 12,
+            "position": [
+                -4.989666938781738,
+                -7.34108829498291,
+                -1.0731178522109986
+            ],
+            "eulerDegrees": [
+                85.52185821533203,
+                6.0853705406188969,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_025_Owner_012"
+        },
+        {
+            "id": 26,
+            "ownerId": 12,
+            "position": [
+                -4.91340446472168,
+                -0.45461305975914,
+                -1.7391302585601807
+            ],
+            "eulerDegrees": [
+                4.470221042633057,
+                -170.4984893798828,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_026_Owner_012"
+        },
+        {
+            "id": 27,
+            "ownerId": 12,
+            "position": [
+                -4.8455610275268559,
+                -3.774057149887085,
+                -1.4873661994934083
+            ],
+            "eulerDegrees": [
+                4.470221042633057,
+                -170.4984893798828,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_027_Owner_012"
+        },
+        {
+            "id": 28,
+            "ownerId": 13,
+            "position": [
+                -4.273839473724365,
+                -6.993841648101807,
+                3.32961368560791
+            ],
+            "eulerDegrees": [
+                85.52185821533203,
+                6.0853705406188969,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_028_Owner_013"
+        },
+        {
+            "id": 29,
+            "ownerId": 13,
+            "position": [
+                -4.118515491485596,
+                -0.04589283838868141,
+                2.921299457550049
+            ],
+            "eulerDegrees": [
+                -4.470211029052734,
+                9.501507759094239,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_029_Owner_013"
+        },
+        {
+            "id": 30,
+            "ownerId": 13,
+            "position": [
+                -4.112985610961914,
+                -3.3705971240997316,
+                3.183910369873047
+            ],
+            "eulerDegrees": [
+                -4.470211029052734,
+                9.501507759094239,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_030_Owner_013"
+        },
+        {
+            "id": 31,
+            "ownerId": 14,
+            "position": [
+                3.9899442195892336,
+                -7.024440288543701,
+                2.0556907653808595
+            ],
+            "eulerDegrees": [
+                85.52185821533203,
+                6.0853705406188969,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_031_Owner_014"
+        },
+        {
+            "id": 32,
+            "ownerId": 14,
+            "position": [
+                3.746675491333008,
+                -0.12695683538913728,
+                1.6113313436508179
+            ],
+            "eulerDegrees": [
+                -4.470211029052734,
+                9.501507759094239,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_032_Owner_014"
+        },
+        {
+            "id": 33,
+            "ownerId": 14,
+            "position": [
+                3.732408285140991,
+                -3.4495606422424318,
+                1.8770884275436402
+            ],
+            "eulerDegrees": [
+                -4.470211029052734,
+                9.501507759094239,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_033_Owner_014"
+        },
+        {
+            "id": 34,
+            "ownerId": 15,
+            "position": [
+                1.2279225587844849,
+                -7.040258884429932,
+                0.24054378271102906
+            ],
+            "eulerDegrees": [
+                85.52185821533203,
+                6.0853705406188969,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_034_Owner_015"
+        },
+        {
+            "id": 35,
+            "ownerId": 15,
+            "position": [
+                1.5497359037399293,
+                -6.402859210968018,
+                -0.5308158993721008
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_035_Owner_015"
+        },
+        {
+            "id": 36,
+            "ownerId": 16,
+            "position": [
+                -2.659421443939209,
+                -7.025757312774658,
+                0.8411757349967957
+            ],
+            "eulerDegrees": [
+                85.52185821533203,
+                6.0853705406188969,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_036_Owner_016"
+        },
+        {
+            "id": 37,
+            "ownerId": 16,
+            "position": [
+                -2.5781047344207765,
+                -6.377089023590088,
+                0.24015851318836213
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_037_Owner_016"
+        },
+        {
+            "id": 38,
+            "ownerId": 17,
+            "position": [
+                -2.872403383255005,
+                4.241767883300781,
+                -0.5062422752380371
+            ],
+            "eulerDegrees": [
+                0.26578715443611147,
+                99.48072052001953,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_038_Owner_017"
+        },
+        {
+            "id": 39,
+            "ownerId": 18,
+            "position": [
+                -2.231548309326172,
+                4.29740571975708,
+                -0.5364651083946228
+            ],
+            "eulerDegrees": [
+                0.26578715443611147,
+                99.48072052001953,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_039_Owner_018"
+        },
+        {
+            "id": 40,
+            "ownerId": 19,
+            "position": [
+                -1.603397250175476,
+                4.16687536239624,
+                -0.6868553161621094
+            ],
+            "eulerDegrees": [
+                0.26578715443611147,
+                99.48072052001953,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_040_Owner_019"
+        },
+        {
+            "id": 41,
+            "ownerId": 20,
+            "position": [
+                -1.0679022073745728,
+                4.079463005065918,
+                -0.9187631607055664
+            ],
+            "eulerDegrees": [
+                0.26576727628707888,
+                99.48072814941406,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_041_Owner_020"
+        },
+        {
+            "id": 42,
+            "ownerId": 21,
+            "position": [
+                -0.07249774038791657,
+                3.6806538105010988,
+                -1.322432518005371
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_042_Owner_021"
+        },
+        {
+            "id": 43,
+            "ownerId": 22,
+            "position": [
+                1.637645959854126,
+                3.5979278087615969,
+                -1.8811674118041993
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_043_Owner_022"
+        },
+        {
+            "id": 44,
+            "ownerId": 23,
+            "position": [
+                -3.472128391265869,
+                0.9644626975059509,
+                0.07884619385004044
+            ],
+            "eulerDegrees": [
+                0.26576727628707888,
+                99.48072814941406,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_044_Owner_023"
+        },
+        {
+            "id": 45,
+            "ownerId": 24,
+            "position": [
+                -2.671163558959961,
+                1.0541257858276368,
+                0.02226165123283863
+            ],
+            "eulerDegrees": [
+                0.2657686471939087,
+                99.4807357788086,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_045_Owner_024"
+        },
+        {
+            "id": 46,
+            "ownerId": 25,
+            "position": [
+                -2.145667314529419,
+                0.7663639187812805,
+                -0.4748525619506836
+            ],
+            "eulerDegrees": [
+                0.2657782733440399,
+                99.48072052001953,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_046_Owner_025"
+        },
+        {
+            "id": 47,
+            "ownerId": 26,
+            "position": [
+                -1.374664545059204,
+                0.9033809900283814,
+                -0.38624903559684756
+            ],
+            "eulerDegrees": [
+                -15.00938606262207,
+                100.70259857177735,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_047_Owner_026"
+        },
+        {
+            "id": 48,
+            "ownerId": 27,
+            "position": [
+                -3.524991512298584,
+                -2.2851216793060304,
+                0.40910604596138
+            ],
+            "eulerDegrees": [
+                0.26576727628707888,
+                99.48072814941406,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_048_Owner_027"
+        },
+        {
+            "id": 49,
+            "ownerId": 28,
+            "position": [
+                -2.8628454208374025,
+                -2.3163976669311525,
+                0.26967066526412966
+            ],
+            "eulerDegrees": [
+                0.26578715443611147,
+                99.48072052001953,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_049_Owner_028"
+        },
+        {
+            "id": 50,
+            "ownerId": 29,
+            "position": [
+                -2.1845009326934816,
+                -2.2926135063171388,
+                0.13266776502132417
+            ],
+            "eulerDegrees": [
+                0.2657717168331146,
+                99.48072814941406,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_050_Owner_029"
+        },
+        {
+            "id": 51,
+            "ownerId": 30,
+            "position": [
+                -1.4903839826583863,
+                -2.337709426879883,
+                0.06717189401388169
+            ],
+            "eulerDegrees": [
+                0.26576727628707888,
+                99.48072814941406,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_051_Owner_030"
+        },
+        {
+            "id": 52,
+            "ownerId": 31,
+            "position": [
+                -2.7405476570129396,
+                -5.742655277252197,
+                -0.6033585071563721
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_052_Owner_031"
+        },
+        {
+            "id": 53,
+            "ownerId": 32,
+            "position": [
+                0.805012583732605,
+                -5.757593631744385,
+                -1.2069891691207886
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_053_Owner_032"
+        },
+        {
+            "id": 54,
+            "ownerId": 33,
+            "position": [
+                1.9355659484863282,
+                0.3075771927833557,
+                -1.3619415760040284
+            ],
+            "eulerDegrees": [
+                -75.12966918945313,
+                116.62493133544922,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_054_Owner_033"
+        },
+        {
+            "id": 55,
+            "ownerId": 33,
+            "position": [
+                0.8579821586608887,
+                0.3153386414051056,
+                -1.2479126453399659
+            ],
+            "eulerDegrees": [
+                -83.37767791748047,
+                -122.82682800292969,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_055_Owner_033"
+        },
+        {
+            "id": 56,
+            "ownerId": 34,
+            "position": [
+                -3.397547483444214,
+                -5.09935998916626,
+                -0.5461915135383606
+            ],
+            "eulerDegrees": [
+                -75.20640563964844,
+                -97.71769714355469,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_056_Owner_034"
+        },
+        {
+            "id": 57,
+            "ownerId": 34,
+            "position": [
+                -1.9187572002410889,
+                -5.095066547393799,
+                -0.7218971848487854
+            ],
+            "eulerDegrees": [
+                -82.84076690673828,
+                137.99374389648438,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_057_Owner_034"
+        },
+        {
+            "id": 58,
+            "ownerId": 35,
+            "position": [
+                0.3313298225402832,
+                -5.215014934539795,
+                -1.1602572202682496
+            ],
+            "eulerDegrees": [
+                -83.3776626586914,
+                -122.82697296142578,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_058_Owner_035"
+        },
+        {
+            "id": 59,
+            "ownerId": 35,
+            "position": [
+                1.5353573560714722,
+                -5.221222400665283,
+                -1.3325444459915162
+            ],
+            "eulerDegrees": [
+                -82.9754867553711,
+                138.88241577148438,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_059_Owner_035"
+        },
+        {
+            "id": 60,
+            "ownerId": 36,
+            "position": [
+                1.6071727275848389,
+                4.3740925788879398,
+                1.2595343589782715
+            ],
+            "eulerDegrees": [
+                -4.470211029052734,
+                9.501507759094239,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_060_Owner_036"
+        },
+        {
+            "id": 61,
+            "ownerId": 36,
+            "position": [
+                -2.2283270359039308,
+                4.477952003479004,
+                1.893248200416565
+            ],
+            "eulerDegrees": [
+                -4.470211029052734,
+                9.501507759094239,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_061_Owner_036"
+        },
+        {
+            "id": 62,
+            "ownerId": 36,
+            "position": [
+                -0.32871225476264956,
+                5.990323543548584,
+                1.4554301500320435
+            ],
+            "eulerDegrees": [
+                -4.470211029052734,
+                9.501507759094239,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_062_Owner_036"
+        },
+        {
+            "id": 63,
+            "ownerId": 36,
+            "position": [
+                -0.338804692029953,
+                4.4220356941223148,
+                1.2382783889770508
+            ],
+            "eulerDegrees": [
+                4.470221042633057,
+                -170.4984893798828,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_063_Owner_036"
+        },
+        {
+            "id": 64,
+            "ownerId": 37,
+            "position": [
+                -0.17732572555541993,
+                1.3365683555603028,
+                1.8006656169891358
+            ],
+            "eulerDegrees": [
+                -4.470211029052734,
+                9.501507759094239,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_064_Owner_037"
+        },
+        {
+            "id": 65,
+            "ownerId": 37,
+            "position": [
+                -2.4820520877838136,
+                1.3479396104812623,
+                1.8398282527923585
+            ],
+            "eulerDegrees": [
+                4.470221519470215,
+                -170.4984893798828,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_065_Owner_037"
+        },
+        {
+            "id": 66,
+            "ownerId": 37,
+            "position": [
+                1.8927581310272217,
+                1.3612743616104127,
+                1.1065610647201539
+            ],
+            "eulerDegrees": [
+                4.470214366912842,
+                -170.4984893798828,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_066_Owner_037"
+        },
+        {
+            "id": 67,
+            "ownerId": 38,
+            "position": [
+                -0.28112897276878359,
+                -1.791860818862915,
+                2.0645344257354738
+            ],
+            "eulerDegrees": [
+                -4.470214366912842,
+                9.501508712768555,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_067_Owner_038"
+        },
+        {
+            "id": 68,
+            "ownerId": 38,
+            "position": [
+                1.8122096061706544,
+                -1.8219170570373536,
+                1.370879054069519
+            ],
+            "eulerDegrees": [
+                4.470221042633057,
+                -170.4984893798828,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_068_Owner_038"
+        },
+        {
+            "id": 69,
+            "ownerId": 38,
+            "position": [
+                -2.4395430088043215,
+                -1.8382806777954102,
+                2.0837903022766115
+            ],
+            "eulerDegrees": [
+                4.470221042633057,
+                -170.4984893798828,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_069_Owner_038"
+        },
+        {
+            "id": 70,
+            "ownerId": 39,
+            "position": [
+                -2.1173250675201418,
+                3.164985179901123,
+                -0.4359405040740967
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_070_Owner_039"
+        },
+        {
+            "id": 71,
+            "ownerId": 39,
+            "position": [
+                -0.04054796323180199,
+                3.1183173656463625,
+                -1.2073819637298585
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_071_Owner_039"
+        },
+        {
+            "id": 72,
+            "ownerId": 39,
+            "position": [
+                1.6554937362670899,
+                3.0991644859313967,
+                -1.683349847793579
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_072_Owner_039"
+        },
+        {
+            "id": 73,
+            "ownerId": 40,
+            "position": [
+                -3.247939109802246,
+                -0.10666719079017639,
+                0.1840755045413971
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_073_Owner_040"
+        },
+        {
+            "id": 74,
+            "ownerId": 40,
+            "position": [
+                1.3943943977355958,
+                -0.17234821617603303,
+                -1.215177059173584
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_074_Owner_040"
+        },
+        {
+            "id": 75,
+            "ownerId": 40,
+            "position": [
+                -0.35657936334609988,
+                -0.06426732242107392,
+                0.4183594286441803
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_075_Owner_040"
+        },
+        {
+            "id": 76,
+            "ownerId": 41,
+            "position": [
+                -3.1541075706481935,
+                -3.396879196166992,
+                0.22766566276550294
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_076_Owner_041"
+        },
+        {
+            "id": 77,
+            "ownerId": 41,
+            "position": [
+                1.611668348312378,
+                -3.4106645584106447,
+                -0.518365740776062
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_077_Owner_041"
+        },
+        {
+            "id": 78,
+            "ownerId": 42,
+            "position": [
+                1.4489940404891968,
+                -2.0626111030578615,
+                -1.4111747741699219
+            ],
+            "eulerDegrees": [
+                -6.602436065673828,
+                178.33543395996095,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_078_Owner_042"
+        },
+        {
+            "id": 79,
+            "ownerId": 43,
+            "position": [
+                -0.28814250230789187,
+                0.35359686613082888,
+                0.05467872694134712
+            ],
+            "eulerDegrees": [
+                -18.618358612060548,
+                156.57945251464845,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_079_Owner_043"
+        },
+        {
+            "id": 80,
+            "ownerId": 44,
+            "position": [
+                5.212639331817627,
+                -5.397230625152588,
+                -0.48656323552131655
+            ],
+            "eulerDegrees": [
+                -71.42353820800781,
+                117.10169219970703,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_080_Owner_044"
+        },
+        {
+            "id": 81,
+            "ownerId": 44,
+            "position": [
+                4.700087070465088,
+                -5.662596225738525,
+                -2.031944513320923
+            ],
+            "eulerDegrees": [
+                -67.63851165771485,
+                127.805908203125,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_081_Owner_044"
+        },
+        {
+            "id": 82,
+            "ownerId": 45,
+            "position": [
+                4.570121765136719,
+                -7.231749534606934,
+                -0.8621556162834168
+            ],
+            "eulerDegrees": [
+                85.52185821533203,
+                6.0853705406188969,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_082_Owner_045"
+        },
+        {
+            "id": 83,
+            "ownerId": 45,
+            "position": [
+                4.514955997467041,
+                -6.23930025100708,
+                -0.9655582308769226
+            ],
+            "eulerDegrees": [
+                -85.52185821533203,
+                -173.91473388671876,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_083_Owner_045"
+        },
+        {
+            "id": 84,
+            "ownerId": 46,
+            "position": [
+                -0.26066428422927859,
+                -4.939417839050293,
+                2.3095061779022219
+            ],
+            "eulerDegrees": [
+                -4.470211029052734,
+                9.501507759094239,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_084_Owner_046"
+        },
+        {
+            "id": 85,
+            "ownerId": 46,
+            "position": [
+                -2.3924458026885988,
+                -4.915111541748047,
+                2.3186984062194826
+            ],
+            "eulerDegrees": [
+                4.470221042633057,
+                -170.4984893798828,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_085_Owner_046"
+        },
+        {
+            "id": 86,
+            "ownerId": 46,
+            "position": [
+                1.9003239870071412,
+                -4.9441142082214359,
+                1.6025179624557496
+            ],
+            "eulerDegrees": [
+                4.470221042633057,
+                -170.4984893798828,
+                0.0
+            ],
+            "sourceWhitelist": "",
+            "nodePath": "Assembly/Bolts/Bolt_086_Owner_046"
+        }
+    ],
+    "sourcePrefab": "Assets/UnscrewFirst20/Models/rcv_014/prefab/rcv_014.prefab",
+    "prefab": "Assets/UnscrewFirst20/Levels/Level_14.prefab",
+    "glb": "GLB/Levels/Level_14.glb"
+}
