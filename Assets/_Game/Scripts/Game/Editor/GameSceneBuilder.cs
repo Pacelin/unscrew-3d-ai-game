@@ -234,10 +234,17 @@ namespace Unscrew.Game.Editor
             var title = Text("Title", panel, "Level complete!", 80, FontStyles.Bold, new Color(0.14f, 0.2f, 0.29f), TextAlignmentOptions.Center);
             Anchor(title.rectTransform, new Vector2(0f, 0.5f), new Vector2(1f, 1f), new Vector2(20f, 0f), new Vector2(-20f, -20f));
 
-            var restart = Button("RestartButton", panel, "Restart", new Color(0.95f, 0.55f, 0.25f));
-            Anchor((RectTransform)restart.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(-380f, 50f), new Vector2(-20f, 190f));
-            var next = Button("NextButton", panel, "Next", new Color(0.27f, 0.72f, 0.38f));
-            Anchor((RectTransform)next.transform, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(20f, 50f), new Vector2(380f, 190f));
+            // Row of buttons: a layout group keeps a single button (Restart on lose) centered.
+            var row = Rect("Buttons", panel, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(20f, 50f), new Vector2(-20f, 190f));
+            var layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
+            layout.spacing = 40f;
+            layout.childAlignment = TextAnchor.MiddleCenter;
+            layout.childControlWidth = true;
+            layout.childControlHeight = true;
+            layout.childForceExpandWidth = false;
+            layout.childForceExpandHeight = false;
+            var restart = Button("RestartButton", row, "Restart", new Color(0.95f, 0.55f, 0.25f));
+            var next = Button("NextButton", row, "Next", new Color(0.27f, 0.72f, 0.38f));
 
             var hud = ui.AddComponent<GameHud>();
             Set(hud, "levelText", levelText);
@@ -291,6 +298,9 @@ namespace Unscrew.Game.Editor
             img.type = Image.Type.Sliced;
             img.color = color;
             var btn = go.AddComponent<Button>();
+            var le = go.AddComponent<LayoutElement>();
+            le.preferredWidth = 360f;
+            le.preferredHeight = 140f;
             var t = Text("Label", go.transform, label, 56, FontStyles.Bold, Color.white, TextAlignmentOptions.Center);
             Anchor(t.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
             return btn;

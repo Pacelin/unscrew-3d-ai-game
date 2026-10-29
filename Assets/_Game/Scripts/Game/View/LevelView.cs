@@ -14,9 +14,10 @@ namespace Unscrew.Game
 
         [Tooltip("Viewport rect (x, y, w, h) the model's bounding sphere must fit into.")]
         [SerializeField] private Rect modelViewport = new Rect(0.02f, 0.05f, 0.96f, 0.65f);
-        [SerializeField] private float startPitch = 12f;
-        [SerializeField] private float minPitch = -30f;
-        [SerializeField] private float maxPitch = 60f;
+        [Tooltip("Negative = top of the model tilted toward the camera (seen slightly from above).")]
+        [SerializeField] private float startPitch = -15f;
+        [SerializeField] private float minPitch = -60f;
+        [SerializeField] private float maxPitch = 35f;
 
         private Camera _cam;
         private Transform _pivot;
@@ -98,6 +99,13 @@ namespace Unscrew.Game
             Parts = new PartView[0];
         }
 
+        /// <summary>QA aid (editor key B): dims bolts the board reports as blocked.</summary>
+        public void ShowBlocked(IBoard board, bool on)
+        {
+            foreach (var b in Bolts)
+                if (b != null && !b.Detached) b.SetDimmed(on && !board.IsAccessible(b.Id));
+        }
+
         public BoltView GetBolt(int id) => id >= 0 && id < Bolts.Length ? Bolts[id] : null;
 
         public void Orbit(float deltaYaw, float deltaPitch)
@@ -112,6 +120,7 @@ namespace Unscrew.Game
         public void FitCamera()
         {
             if (_pivot == null || _cam == null) return;
+            _fittedAspect = _cam.aspect;
             float tanV = Mathf.Tan(_cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * modelViewport.height;
             float tanH = Mathf.Tan(_cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * _cam.aspect * modelViewport.width;
             // Fit the axis-aligned extents rather than the bounding sphere (which makes bolts tiny):
@@ -124,6 +133,14 @@ namespace Unscrew.Game
             float dist = Mathf.Max(halfW / tanH, halfH / tanV) + depth;
             var ray = _cam.ViewportPointToRay(new Vector3(modelViewport.center.x, modelViewport.center.y, 0f));
             _pivot.position = ray.GetPoint(dist);
+        }
+
+        private float _fittedAspect;
+
+        private void LateUpdate()
+        {
+            // Rotation / resize of the window: keep the model in its viewport rect.
+            if (_cam != null && _pivot != null && !Mathf.Approximately(_cam.aspect, _fittedAspect)) FitCamera();
         }
 
         private void ApplyRotation()

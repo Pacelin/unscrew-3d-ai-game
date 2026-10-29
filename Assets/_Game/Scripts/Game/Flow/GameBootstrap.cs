@@ -39,6 +39,15 @@ namespace Unscrew.Game
             Anim.Speed = 1f;
         }
 
+        private bool _showBlocked;
+
+        /// <summary>Dims blocked bolts (refreshes the current state; press again to clear).</summary>
+        public void ToggleBlockedDebug()
+        {
+            _showBlocked = !_showBlocked;
+            if (Flow.Session != null) presenter.Level.ShowBlocked(Flow.Session.Board, _showBlocked);
+        }
+
         private void Update()
         {
             Flow.Tick();
@@ -46,6 +55,7 @@ namespace Unscrew.Game
             if (Input.GetKeyDown(KeyCode.N)) Flow.NextLevel();
             if (Input.GetKeyDown(KeyCode.R)) Flow.Restart();
             if (Input.GetKeyDown(KeyCode.P)) DebugAutoplay.Run();
+            if (Input.GetKeyDown(KeyCode.B)) ToggleBlockedDebug();
 #endif
         }
     }

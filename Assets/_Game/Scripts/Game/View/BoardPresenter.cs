@@ -32,6 +32,8 @@ namespace Unscrew.Game
         public TrayView Tray => trayView;
         /// <summary>No queued events and no animation in progress.</summary>
         public bool IsIdle => _queue.Count == 0 && !_processing && _running == 0;
+        /// <summary>Steps waiting in the queue (bots throttle on it).</summary>
+        public int PendingSteps => _queue.Count;
 
         public void Show(Camera cam, LevelCatalog catalog, int sourceNumber, IGameSession session)
         {

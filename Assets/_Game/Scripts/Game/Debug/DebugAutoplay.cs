@@ -89,6 +89,8 @@ namespace Unscrew.Game
                 if (!flow.TapBolt(bolt)) break;
                 moves++;
                 yield return new WaitForSeconds(TapInterval);
+                // Don't run far ahead of the view: keeps the final animations short.
+                while (flow.Presenter.PendingSteps > 4) yield return null;
             }
             // Let the queue finish at speed before handing control back.
             while (!flow.Presenter.IsIdle) yield return null;

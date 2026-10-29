@@ -23,6 +23,8 @@ namespace Unscrew.Game
         public bool InFlight { get; set; }
         public bool Detached { get; private set; }
 
+        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+
         private Renderer _renderer;
         private Collider _collider;
         private Coroutine _shake;
@@ -60,6 +62,19 @@ namespace Unscrew.Game
             StopShake();
             _collider.enabled = false;
             transform.SetParent(parent, true);
+        }
+
+        /// <summary>QA aid: dims the bolt (blocked) or restores its palette colors.</summary>
+        public void SetDimmed(bool dimmed)
+        {
+            var mats = _renderer.sharedMaterials;
+            for (int i = 0; i < mats.Length; i++)
+            {
+                if (!dimmed) { _renderer.SetPropertyBlock(null, i); continue; }
+                var block = new MaterialPropertyBlock();
+                block.SetColor(BaseColorId, mats[i].GetColor(BaseColorId) * 0.25f);
+                _renderer.SetPropertyBlock(block, i);
+            }
         }
 
         public void Shake()
