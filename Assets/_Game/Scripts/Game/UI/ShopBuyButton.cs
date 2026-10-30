@@ -18,6 +18,7 @@ namespace Unscrew.Game
 
         private Color _faceColor;
         private bool _colorRead;
+        private int _cooldownShown;
 
         public ShopItem Item { get; private set; }
         public event Action<ShopBuyButton> Clicked;
@@ -46,10 +47,22 @@ namespace Unscrew.Game
             adIcon.SetActive(free);
         }
 
+        /// <summary>Rewarded video on cooldown: grey face with the remaining time instead of "FREE" (0 restores it).</summary>
+        public void SetCooldown(int secondsLeft)
+        {
+            if (Item == null || secondsLeft == _cooldownShown) return;
+            _cooldownShown = secondsLeft;
+            bool cooling = secondsLeft > 0;
+            priceText.text = cooling ? AdCooldown.Format(secondsLeft) : "FREE";
+            adIcon.SetActive(!cooling && Item.price <= 0);
+            face.color = cooling ? new Color(0.76f, 0.78f, 0.84f) : _faceColor;
+        }
+
         /// <summary>NotEnoughCoins: grey face and red price, still tappable (explains why).</summary>
         public void SetResult(ShopResult canBuy)
         {
             bool ok = canBuy == ShopResult.Success;
+            _cooldownShown = 0;
             face.color = ok ? _faceColor : new Color(0.76f, 0.78f, 0.84f);
             priceText.color = canBuy == ShopResult.NotEnoughCoins ? new Color(0.86f, 0.18f, 0.2f) : Color.white;
         }

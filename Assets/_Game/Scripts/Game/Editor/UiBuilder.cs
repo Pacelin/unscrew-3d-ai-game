@@ -4,6 +4,7 @@ using Unscrew.Core;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.TextCore.LowLevel;
 using UnityEngine.UI;
 
 namespace Unscrew.Game.Editor
@@ -16,6 +17,10 @@ namespace Unscrew.Game.Editor
     public static class UiBuilder
     {
         private const string FontDir = "Assets/_Game/UI/Fonts";
+        private const string FontTtf = FontDir + "/Fredoka/Fredoka-SemiBold.ttf";
+        private const string FontAssetPath = FontDir + "/Fredoka/Fredoka SDF.asset";
+        /// <summary>Characters baked into the static atlas (everything the UI prints).</summary>
+        private const string FontChars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~×…—–’";
 
         // Palette.
         private static readonly Color Navy = Hex("2A3156");
@@ -78,6 +83,8 @@ namespace Unscrew.Game.Editor
             var unlock = BuildUnlock(root);
             var ad = BuildAd(root);
             var toast = BuildToast(root);
+            var onboarding = BuildOnboarding(root);
+            var curtain = BuildCurtain(root);
 
             var ui = go.AddComponent<UiRoot>();
             Set(ui, "hud", hud);
@@ -89,10 +96,12 @@ namespace Unscrew.Game.Editor
             Set(ui, "unlock", unlock);
             Set(ui, "ad", ad);
             Set(ui, "toast", toast);
+            Set(ui, "curtain", curtain);
+            Set(ui, "onboarding", onboarding);
             SetArray(ui, "boosterIcons", new Object[] { S("booster_slot"), S("booster_drill"), S("booster_magnet") });
             Set(ui, "coinSprite", S("coin"));
 
-            foreach (var p in new Component[] { hud, menu, win, lose, shop, settings, unlock, ad, toast }) p.gameObject.SetActive(false);
+            foreach (var p in new Component[] { hud, menu, win, lose, shop, settings, unlock, ad, toast, curtain }) p.gameObject.SetActive(false);
             return ui;
         }
 
@@ -101,12 +110,38 @@ namespace Unscrew.Game.Editor
         private static void BuildFonts()
         {
             if (!AssetDatabase.IsValidFolder(FontDir)) AssetDatabase.CreateFolder("Assets/_Game/UI", "Fonts");
-            _font = TMP_Settings.defaultFontAsset;
-            if (_font == null) _font = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset");
+            _font = EnsureFontAsset();
             // Chunky label: dilated face, thin dark outline and a soft drop shadow.
-            _matShadow = Preset("Label Shadow", 0.18f, 0.12f, new Color(0f, 0f, 0f, 0.28f), new Color(0.05f, 0.07f, 0.2f, 0.45f), -1.1f);
+            _matShadow = Preset("Label Shadow", 0.1f, 0.14f, new Color(0.05f, 0.07f, 0.2f, 0.35f), new Color(0.05f, 0.07f, 0.2f, 0.4f), -1.0f);
             // Titles: thick navy outline and a hard shadow.
-            _matTitle = Preset("Title Outline", 0.22f, 0.26f, Navy, new Color(0.06f, 0.08f, 0.22f, 0.9f), -1.6f);
+            _matTitle = Preset("Title Outline", 0.16f, 0.28f, Navy, new Color(0.06f, 0.08f, 0.22f, 0.9f), -1.4f);
+        }
+
+        /// <summary>
+        /// Fredoka SemiBold (OFL, google/fonts, instanced from the variable font at wght 600) as a static TMP SDF atlas.
+        /// Built once; delete the asset to rebuild. LiberationSans stays as a fallback for missing glyphs.
+        /// </summary>
+        private static TMP_FontAsset EnsureFontAsset()
+        {
+            var existing = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+            if (existing != null) return existing;
+            var ttf = AssetDatabase.LoadAssetAtPath<Font>(FontTtf);
+            if (ttf == null) throw new FileNotFoundException("UiBuilder: font missing " + FontTtf);
+            var fa = TMP_FontAsset.CreateFontAsset(ttf, 72, 8, GlyphRenderMode.SDFAA, 1024, 1024, AtlasPopulationMode.Dynamic, false);
+            fa.name = "Fredoka SDF";
+            fa.TryAddCharacters(FontChars, out var missing);
+            if (!string.IsNullOrEmpty(missing)) Debug.Log("UiBuilder: glyphs not in Fredoka: " + missing);
+            AssetDatabase.CreateAsset(fa, FontAssetPath);
+            fa.atlasTextures[0].name = "Fredoka SDF Atlas";
+            AssetDatabase.AddObjectToAsset(fa.atlasTextures[0], fa);
+            fa.material.name = "Fredoka SDF Material";
+            AssetDatabase.AddObjectToAsset(fa.material, fa);
+            fa.atlasPopulationMode = AtlasPopulationMode.Static;
+            var fallback = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>("Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset");
+            if (fallback != null) fa.fallbackFontAssetTable = new System.Collections.Generic.List<TMP_FontAsset> { fallback };
+            EditorUtility.SetDirty(fa);
+            AssetDatabase.SaveAssets();
+            return fa;
         }
 
         private static Material Preset(string name, float dilate, float outline, Color outlineColor, Color underlay, float underlayY)
@@ -148,12 +183,14 @@ namespace Unscrew.Game.Editor
             Place(pause.transform, new Vector2(0f, 1f), new Vector2(36f + 64f, -30f - 64f), new Vector2(128f, 128f));
 
             var levelPill = Card("LevelPill", safe, PanelBg, 1f);
-            Place(levelPill, new Vector2(0.5f, 1f), new Vector2(-20f, -30f - 50f), new Vector2(300f, 100f));
+            Place(levelPill, new Vector2(0.5f, 1f), new Vector2(-40f, -30f - 50f), new Vector2(270f, 100f));
             var levelText = Txt("Text", levelPill, "Level 1", 58, Navy, null, TextAlignmentOptions.Center);
-            Stretch(levelText.rectTransform);
+            Stretch(levelText.rectTransform, 0f, 2f);
+            // HARD tag on the pill's corner (not below it: on 3:4 the box row starts right under the top bar).
             var hard = Card("HardBadge", levelPill, Red, 0.7f);
-            Place(hard, new Vector2(0.5f, 0f), new Vector2(0f, -22f), new Vector2(150f, 52f));
-            Stretch(Txt("Text", hard, "HARD", 34, Color.white, _matShadow, TextAlignmentOptions.Center).rectTransform);
+            Place(hard, new Vector2(1f, 1f), new Vector2(-6f, -2f), new Vector2(124f, 50f));
+            hard.localRotation = Quaternion.Euler(0f, 0f, -12f);
+            Stretch(Txt("Text", hard, "HARD", 30, Color.white, _matShadow, TextAlignmentOptions.Center).rectTransform, 0f, 2f);
 
             var coins = CoinPill("Coins", safe, true);
             Place(coins.transform, new Vector2(1f, 1f), new Vector2(-36f - 140f, -30f - 50f), new Vector2(280f, 100f));
@@ -304,12 +341,14 @@ namespace Unscrew.Game.Editor
             Place(rays.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, 380f), new Vector2(1000f, 1000f));
             rays.gameObject.AddComponent<Spin>();
             var window = Window(safe, new Vector2(860f, 840f), new Vector2(0f, -40f));
+            var stars = new RectTransform[3];
             for (int i = 0; i < 3; i++)
             {
                 var star = Img("Star" + i, window, S("star"), Color.white);
                 float size = i == 1 ? 230f : 180f;
                 Place(star.rectTransform, new Vector2(0.5f, 1f), new Vector2((i - 1) * 210f, i == 1 ? 30f : -10f), new Vector2(size, size));
                 star.transform.localRotation = Quaternion.Euler(0f, 0f, (1 - i) * 14f);
+                stars[i] = star.rectTransform;
             }
             var level = Txt("Level", window, "Level 1", 56, TextGrey, null, TextAlignmentOptions.Center);
             Place(level.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -180f), new Vector2(700f, 70f));
@@ -335,6 +374,17 @@ namespace Unscrew.Game.Editor
             var coinTemplate = Img("FlyingCoin", fly, S("coin"), Color.white);
             Place(coinTemplate.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(96f, 96f));
             coinTemplate.raycastTarget = false;
+
+            var confettiLayer = new GameObject("Confetti", typeof(RectTransform)).GetComponent<RectTransform>();
+            confettiLayer.SetParent(panel, false);
+            Stretch(confettiLayer);
+            var piece = Img("Piece", confettiLayer, S("confetti"), Color.white);
+            piece.preserveAspect = false;
+            Place(piece.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(24f, 38f));
+            var confetti = confettiLayer.gameObject.AddComponent<UiConfetti>();
+            Set(confetti, "template", piece);
+            SetArray(win, "stars", stars);
+            Set(win, "confetti", confetti);
 
             Set(win, "window", window);
             Set(win, "levelText", level);
@@ -673,13 +723,16 @@ namespace Unscrew.Game.Editor
             var go = new GameObject("Toast", typeof(RectTransform));
             go.transform.SetParent(root, false);
             var rt = (RectTransform)go.transform;
-            Place(rt, new Vector2(0.5f, 0.62f), Vector2.zero, new Vector2(760f, 110f));
+            Place(rt, new Vector2(0.5f, 0.215f), Vector2.zero, new Vector2(760f, 110f));
             go.AddComponent<CanvasGroup>();
             var img = go.AddComponent<Image>();
             img.sprite = S("circle");
             img.type = Image.Type.Sliced;
-            img.color = new Color(0.12f, 0.14f, 0.3f, 0.92f);
+            img.color = new Color(0.13f, 0.16f, 0.33f, 1f);
             img.raycastTarget = false;
+            var tsh = go.AddComponent<Shadow>();
+            tsh.effectColor = ShadowCol;
+            tsh.effectDistance = new Vector2(0f, -8f);
             var h = go.AddComponent<HorizontalLayoutGroup>();
             h.padding = new RectOffset(56, 56, 22, 22);
             h.childAlignment = TextAnchor.MiddleCenter;
@@ -691,6 +744,83 @@ namespace Unscrew.Game.Editor
             var toast = go.AddComponent<Toast>();
             Set(toast, "label", text);
             return toast;
+        }
+
+        /// <summary>Level intro / loading transition on its own canvas (above every panel).</summary>
+        private static TransitionCurtain BuildCurtain(Transform root)
+        {
+            var go = new GameObject("Curtain", typeof(RectTransform));
+            go.transform.SetParent(root, false);
+            var rt = (RectTransform)go.transform;
+            Stretch(rt);
+            var canvas = go.AddComponent<Canvas>();
+            canvas.overrideSorting = true;
+            canvas.sortingOrder = 60;
+            go.AddComponent<GraphicRaycaster>();
+            go.AddComponent<CanvasGroup>();
+            var bg = Img("Background", rt, S("bg_gradient"), Color.white);
+            bg.preserveAspect = false;
+            bg.raycastTarget = true;
+            Stretch(bg.rectTransform);
+
+            var content = new GameObject("Content", typeof(RectTransform)).GetComponent<RectTransform>();
+            content.SetParent(rt, false);
+            Place(content, new Vector2(0.5f, 0.5f), new Vector2(0f, 60f), new Vector2(900f, 500f));
+            var bolt = Img("Bolt", content, S("bolt_icon"), Color.white);
+            Place(bolt.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, 150f), new Vector2(170f, 170f));
+            var spin = new SerializedObject(bolt.gameObject.AddComponent<Spin>());
+            spin.FindProperty("degreesPerSecond").floatValue = -240f;
+            spin.ApplyModifiedPropertiesWithoutUndo();
+            var title = Txt("Title", content, "Level 1", 140, Color.white, _matTitle, TextAlignmentOptions.Center);
+            Place(title.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -40f), new Vector2(900f, 180f));
+            title.enableVertexGradient = true;
+            title.colorGradient = new VertexGradient(Hex("FFE36A"), Hex("FFE36A"), Hex("FF9A2E"), Hex("FF9A2E"));
+            var hard = Card("Hard", content, Red, 0.7f);
+            Place(hard, new Vector2(0.5f, 0.5f), new Vector2(0f, -170f), new Vector2(240f, 84f));
+            Stretch(Txt("Text", hard, "HARD", 54, Color.white, _matShadow, TextAlignmentOptions.Center).rectTransform, 0f, 3f);
+
+            var curtain = go.AddComponent<TransitionCurtain>();
+            Set(curtain, "title", title);
+            Set(curtain, "hardBadge", hard.gameObject);
+            Set(curtain, "content", content);
+            return curtain;
+        }
+
+        /// <summary>Tutorial hand + speech bubble (never blocks input), above the HUD.</summary>
+        private static Onboarding BuildOnboarding(Transform root)
+        {
+            var go = new GameObject("Onboarding", typeof(RectTransform));
+            go.transform.SetParent(root, false);
+            var rt = (RectTransform)go.transform;
+            Stretch(rt);
+            var canvas = go.AddComponent<Canvas>();
+            canvas.overrideSorting = true;
+            canvas.sortingOrder = 15;
+            var group = go.AddComponent<CanvasGroup>();
+            group.blocksRaycasts = false;
+            group.interactable = false;
+
+            var bubble = Card("Bubble", rt, PanelBg, 0.8f);
+            Place(bubble, new Vector2(0.5f, 0f), new Vector2(0f, 400f), new Vector2(700f, 132f));
+            var text = Txt("Text", bubble, "Tap a bolt to unscrew it!", 42, Navy, null, TextAlignmentOptions.Center);
+            text.enableWordWrapping = true;
+            Stretch(text.rectTransform, 24f, 2f);
+            var arrow = Img("Arrow", bubble, S("arrow_down"), PanelBg);
+            arrow.preserveAspect = false;
+            Place(arrow.rectTransform, new Vector2(0.5f, 0f), new Vector2(0f, -16f), new Vector2(56f, 34f));
+
+            var hand = Img("Hand", rt, S("hand"), Color.white);
+            hand.rectTransform.anchorMin = hand.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            hand.rectTransform.pivot = new Vector2(70f / 160f, 194f / 200f);
+            hand.rectTransform.sizeDelta = new Vector2(124f, 155f);
+
+            var ob = go.AddComponent<Onboarding>();
+            Set(ob, "hand", hand.rectTransform);
+            Set(ob, "bubble", bubble);
+            Set(ob, "bubbleText", text);
+            Set(ob, "bubbleArrow", arrow.rectTransform);
+            Set(ob, "group", group);
+            return ob;
         }
 
         // ---------- widgets ----------
@@ -834,7 +964,7 @@ namespace Unscrew.Game.Editor
             if (preset != null) t.fontSharedMaterial = preset;
             t.text = text;
             t.fontSize = size;
-            t.fontStyle = FontStyles.Bold;
+            t.fontStyle = FontStyles.Normal;
             t.color = color;
             t.alignment = align;
             t.raycastTarget = false;

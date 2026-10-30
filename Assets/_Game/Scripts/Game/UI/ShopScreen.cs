@@ -113,8 +113,22 @@ namespace Unscrew.Game
                     card.SetLocked(false, 0);
                 }
                 foreach (var b in card.Buttons)
-                    if (b.Item != null) b.SetResult(p.Shop.CanBuy(b.Item.id));
+                {
+                    if (b.Item == null) continue;
+                    b.SetResult(p.Shop.CanBuy(b.Item.id));
+                    if (IsFreeVideo(b.Item)) b.SetCooldown(AdCooldown.SecondsLeft);
+                }
             }
+        }
+
+        private static bool IsFreeVideo(ShopItem item) => item.kind == ShopItemKind.Coins && item.price <= 0;
+
+        /// <summary>Ticks the "next video in" timer on the free coins button (text changes once per second).</summary>
+        private void Update()
+        {
+            for (int i = 0; i < _cards.Count; i++)
+                foreach (var b in _cards[i].Buttons)
+                    if (b.Item != null && IsFreeVideo(b.Item)) b.SetCooldown(AdCooldown.SecondsLeft);
         }
 
         private void OnBuy(ShopBuyButton button)
@@ -124,19 +138,30 @@ namespace Unscrew.Game
             if (can == ShopResult.NotEnoughCoins)
             {
                 button.Nudge();
-                _root.Toast.Show("Not enough coins");
+                _root.ShowToast("Not enough coins");
                 return;
             }
             if (can == ShopResult.Locked)
             {
                 button.Nudge();
-                _root.Toast.Show("Unlocks at level " + _root.Player.Unlocks.GetUnlockLevel(item.booster));
+                _root.ShowToast("Unlocks at level " + _root.Player.Unlocks.GetUnlockLevel(item.booster));
                 return;
             }
             if (can != ShopResult.Success) return;
-            if (item.kind == ShopItemKind.Coins && item.price <= 0)
+            if (IsFreeVideo(item))
             {
-                _root.Ad.Play(() => Purchase(item));
+                if (!AdCooldown.Ready)
+                {
+                    button.Nudge();
+                    _root.ShowToast("Next video in " + AdCooldown.Format(AdCooldown.SecondsLeft));
+                    return;
+                }
+                _root.Ad.Play(() =>
+                {
+                    AdCooldown.Begin();
+                    Purchase(item);
+                    Refresh();
+                });
                 return;
             }
             Purchase(item);
@@ -147,9 +172,10 @@ namespace Unscrew.Game
         {
             var result = _root.Player.Shop.TryBuy(item.id);
             if (result != ShopResult.Success) return result;
-            _root.Toast.Show(item.kind == ShopItemKind.Coins
-                ? "+" + item.amount + " coins"
-                : BoosterInfo.Name(item.booster) + " x" + item.amount + " added");
+            Feedback.Play(Sfx.Coin, 0.9f, 1.1f);
+            _root.ShowToast(item.kind == ShopItemKind.Coins
+                ? "Got " + item.amount + " coins!"
+                : "Got " + BoosterInfo.Name(item.booster) + " x" + item.amount);
             return result;
         }
     }

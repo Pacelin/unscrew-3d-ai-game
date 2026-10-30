@@ -26,6 +26,8 @@ namespace Unscrew.Game
         [SerializeField] private UnlockPopup unlock;
         [SerializeField] private AdOverlay ad;
         [SerializeField] private Toast toast;
+        [SerializeField] private TransitionCurtain curtain;
+        [SerializeField] private Onboarding onboarding;
         [Tooltip("Index = (int)BoosterType")]
         [SerializeField] private Sprite[] boosterIcons;
         [SerializeField] private Sprite coinSprite;
@@ -34,6 +36,7 @@ namespace Unscrew.Game
 
         private readonly List<BoosterType> _unlocked = new List<BoosterType>();
         private BoardInput _input;
+        private bool _firstLoad = true;
 
         public GameFlow Flow { get; private set; }
         public PlayerState Player { get; private set; }
@@ -49,6 +52,17 @@ namespace Unscrew.Game
         public ShopScreen Shop => shop;
         public SettingsPopup SettingsPanel => settings;
         public UnlockPopup Unlock => unlock;
+        public Onboarding Onboarding => onboarding;
+        public TransitionCurtain Curtain => curtain;
+
+        /// <summary>A popup or full screen is over the board (onboarding hides).</summary>
+        public bool AnyPopupOpen => win.IsOpen || lose.IsOpen || shop.IsOpen || settings.IsOpen || unlock.IsOpen || ad.IsOpen;
+
+        /// <summary>Toast placed clear of what is under it: over the shop title, otherwise above the booster bar.</summary>
+        public void ShowToast(string message)
+        {
+            toast.Show(message, shop.IsOpen ? 0.885f : Mode == UiMode.Menu ? 0.36f : 0.215f);
+        }
 
         public Sprite BoosterIcon(BoosterType t)
         {
@@ -70,20 +84,38 @@ namespace Unscrew.Game
             shop.Bind(this);
             settings.Bind(this);
             unlock.Bind(this);
+            onboarding.Bind(this);
+            curtain.gameObject.SetActive(false);
+            flow.MinLoadingSeconds = curtain.FadeInTime + 0.02f;
             foreach (var p in new UiPanel[] { hud, menu, win, lose, shop, settings, unlock, ad }) p.gameObject.SetActive(false);
             toast.gameObject.SetActive(false);
 
-            flow.OnLevelStarted += _ => { player.Continue.ResetForLevel(); hud.Refresh(); };
+            flow.OnLevelLoading += OnLevelLoading;
+            flow.OnLevelStarted += _ => { player.Continue.ResetForLevel(); hud.Refresh(); curtain.Reveal(); };
             flow.OnMove += hud.Refresh;
             flow.OnDrillModeChanged += _ => hud.Refresh();
             flow.OnWin += OnWin;
-            flow.OnLose += _ => { hud.Refresh(); lose.Open(); };
+            flow.OnLose += _ =>
+            {
+                hud.Refresh();
+                Feedback.Play(Sfx.Lose);
+                Settings.Vibrate(30);
+                lose.Open();
+            };
             player.Inventory.Changed += (t, c) => hud.Refresh();
             player.Unlocks.Unlocked += _ => hud.Refresh();
             shop.Closed += () => { if (lose.IsOpen) lose.Refresh(); hud.Refresh(); };
         }
 
         // ---------- navigation ----------
+
+        /// <summary>Intro transition while the next layout is generated in the background ("Level N" in game, plain in the menu).</summary>
+        private void OnLevelLoading(int level)
+        {
+            bool titled = Mode == UiMode.Game;
+            curtain.Cover(titled ? "Level " + level : "", titled && DifficultyCurve.IsHardLevel(level), _firstLoad);
+            _firstLoad = false;
+        }
 
         /// <summary>Main menu over the current level, which spins slowly; board input and the tray are off.</summary>
         public void ShowMenu()
@@ -147,10 +179,11 @@ namespace Unscrew.Game
         public void OnBoosterClicked(BoosterType type)
         {
             var button = hud.Get(type);
+            if (Player.Unlocks.IsUnlocked(type)) onboarding.MarkTipSeen(type);
             if (!Player.Unlocks.IsUnlocked(type))
             {
                 button.Nudge();
-                toast.Show("Unlocks at level " + Player.Unlocks.GetUnlockLevel(type));
+                ShowToast("Unlocks at level " + Player.Unlocks.GetUnlockLevel(type));
                 return;
             }
             if (type == BoosterType.Drill && Flow.DrillMode)
@@ -167,7 +200,7 @@ namespace Unscrew.Game
             if (!Flow.UseBooster(type))
             {
                 button.Nudge();
-                toast.Show(type == BoosterType.Magnet ? "No box to fill right now" : "Can't use it right now");
+                ShowToast(type == BoosterType.Magnet ? "No box to fill right now" : "Can't use it right now");
             }
         }
 
@@ -178,7 +211,7 @@ namespace Unscrew.Game
             hud.Refresh();
             _unlocked.Clear();
             int reward = Player.CompleteLevel(Flow.IsHard, _unlocked);
-            Settings.Vibrate();
+            Settings.Vibrate(40);
             win.Show(level, reward, Player.Wallet.Coins, () =>
             {
                 if (_unlocked.Count > 0) unlock.Show(_unlocked, Player.Config.freeBoostersOnUnlock, null);
@@ -198,7 +231,7 @@ namespace Unscrew.Game
             if (!Player.Continue.CanAfford)
             {
                 lose.NudgeContinue();
-                toast.Show("Not enough coins");
+                ShowToast("Not enough coins");
                 OpenShop();
                 return;
             }

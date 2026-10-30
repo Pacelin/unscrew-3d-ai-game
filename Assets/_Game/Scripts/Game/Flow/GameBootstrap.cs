@@ -15,6 +15,7 @@ namespace Unscrew.Game
         [SerializeField] private BoardPresenter presenter;
         [SerializeField] private BoardInput input;
         [SerializeField] private UiRoot ui;
+        [SerializeField] private AudioService audioService;
 
         public static GameBootstrap Instance { get; private set; }
         public GameFlow Flow { get; private set; }
@@ -39,6 +40,8 @@ namespace Unscrew.Game
             Save.Save(Player);
             Save.EnableAutoSave(Player);
             Settings = new GameSettings();
+            Feedback.Audio = audioService;
+            Feedback.Settings = Settings;
 
             var boosters = new BoosterService(Player.Inventory);
             Flow = new GameFlow(catalog, presenter, mainCamera, boosters);
@@ -59,6 +62,8 @@ namespace Unscrew.Game
             Save?.DisableAutoSave();
             Instance = null;
             Anim.Speed = 1f;
+            Feedback.Audio = null;
+            Feedback.Settings = null;
         }
 
         private void OnApplicationPause(bool paused)

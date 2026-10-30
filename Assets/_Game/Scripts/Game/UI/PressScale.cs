@@ -23,7 +23,9 @@ namespace Unscrew.Game
 
         public void OnPointerDown(PointerEventData e)
         {
-            if (_selectable == null || _selectable.interactable) _target = pressed;
+            if (_selectable != null && !_selectable.interactable) return;
+            _target = pressed;
+            Feedback.Play(Sfx.Click, 0.7f);
         }
 
         public void OnPointerUp(PointerEventData e) => _target = 1f;

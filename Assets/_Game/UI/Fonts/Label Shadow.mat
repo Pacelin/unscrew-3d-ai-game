@@ -15,7 +15,7 @@ Material:
   - OUTLINE_ON
   - UNDERLAY_ON
   m_InvalidKeywords: []
-  m_LightmapFlags: 1
+  m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
   m_CustomRenderQueue: -1
@@ -26,23 +26,23 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _MainTex:
-        m_Texture: {fileID: 28684132378477856, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
+        m_Texture: {fileID: 4810930643274124698, guid: 8785a50b5fe37cf4dab023cdd0b67d35, type: 2}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     m_Ints: []
     m_Floats:
     - _ColorMask: 15
     - _CullMode: 0
-    - _FaceDilate: 0.18
-    - _GradientScale: 10
+    - _FaceDilate: 0.1
+    - _GradientScale: 9
     - _MaskSoftnessX: 0
     - _MaskSoftnessY: 0
     - _OutlineSoftness: 0
-    - _OutlineWidth: 0.12
+    - _OutlineWidth: 0.14
     - _PerspectiveFilter: 0.875
-    - _ScaleRatioA: 0.9
+    - _ScaleRatioA: 0.8888889
     - _ScaleRatioB: 1
-    - _ScaleRatioC: 0.36725804
+    - _ScaleRatioC: 0.4556355
     - _ScaleX: 1
     - _ScaleY: 1
     - _ShaderFlags: 0
@@ -54,9 +54,9 @@ Material:
     - _StencilWriteMask: 255
     - _TextureHeight: 1024
     - _TextureWidth: 1024
-    - _UnderlayDilate: 0.3
+    - _UnderlayDilate: 0.24000001
     - _UnderlayOffsetX: 0
-    - _UnderlayOffsetY: -1.1
+    - _UnderlayOffsetY: -1
     - _UnderlaySoftness: 0.15
     - _VertexOffsetX: 0
     - _VertexOffsetY: 0
@@ -65,6 +65,6 @@ Material:
     m_Colors:
     - _ClipRect: {r: -32767, g: -32767, b: 32767, a: 32767}
     - _FaceColor: {r: 1, g: 1, b: 1, a: 1}
-    - _OutlineColor: {r: 0, g: 0, b: 0, a: 0.28}
-    - _UnderlayColor: {r: 0.05, g: 0.07, b: 0.2, a: 0.45}
+    - _OutlineColor: {r: 0.05, g: 0.07, b: 0.2, a: 0.35}
+    - _UnderlayColor: {r: 0.05, g: 0.07, b: 0.2, a: 0.4}
   m_BuildTextureStacks: []

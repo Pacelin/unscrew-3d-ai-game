@@ -195,9 +195,47 @@ namespace Unscrew.Game.Editor
                 r.Fill(p => Circle(p, V(72, 70), 62), new Color(0.55f, 0.62f, 0.76f));
                 r.Fill(p => Circle(p, V(72, 70), 48), new Color(0.18f, 0.22f, 0.32f));
                 r.Fill(p => Circle(p, V(72, 64), 40), new Color(0.12f, 0.15f, 0.22f));
-                r.Fill(p => Circle(p, V(120, 118), 36), new Color(1f, 1f, 1f));
-                r.Fill(p => Circle(p, V(120, 118), 30), new Color(0.27f, 0.78f, 0.33f));
-                r.Fill(p => Union(Capsule(p, V(120, 102), V(120, 134), 7), Capsule(p, V(104, 118), V(136, 118), 7)), Color.white);
+                r.Fill(p => Mathf.Abs(Circle(p, V(72, 70), 55)) - 2.5f, new Color(0.75f, 0.81f, 0.92f));
+                // Sparkle instead of a "+" (the HUD button already shows a green "+" badge when empty).
+                r.Fill(p => Star(p, V(126, 122), 26, 8), new Color(1f, 0.85f, 0.25f));
+                r.Fill(p => Star(p, V(104, 146), 12, 4), new Color(1f, 0.93f, 0.6f));
+            }, Vector4.zero);
+
+            // Onboarding / transitions / confetti.
+            var navy = new Color(0.16f, 0.19f, 0.34f);
+            Func<Vector2, float> hand = p =>
+            {
+                float finger = Capsule(p, V(70, 112), V(70, 178), 17);
+                float palm = RoundBox(p, V(90, 72), V(40, 44), 20);
+                float k1 = Circle(p, V(103, 112), 16);
+                float k2 = Circle(p, V(126, 104), 15);
+                float thumb = Capsule(p, V(52, 78), V(30, 108), 14);
+                return Union(Union(finger, palm), Union(Union(k1, k2), thumb));
+            };
+            Save("hand", 160, 200, r =>
+            {
+                r.Fill(p => hand(p + V(4, 6)) - 7f, new Color(0f, 0f, 0f, 0.25f));
+                r.Fill(p => hand(p) - 7f, navy);
+                r.Fill(hand, Color.white);
+                r.Fill(p => Union(Capsule(p, V(103, 100), V(103, 112), 1.5f), Capsule(p, V(126, 92), V(126, 104), 1.5f)), new Color(0.75f, 0.79f, 0.9f));
+                r.Fill(p => RoundBox(p, V(92, 22), V(40, 16), 8), navy);
+                r.Fill(p => RoundBox(p, V(92, 24), V(34, 10), 6), new Color(0.24f, 0.61f, 1f));
+            }, Vector4.zero, new Vector2(70f / 160f, 194f / 200f));
+            Save("arrow_down", 64, 40, r => r.Fill(p => Poly(p, V(4, 38), V(60, 38), V(32, 4)) - 2f, white), Vector4.zero);
+            Save("confetti", 16, 24, r => r.Fill(p => RoundBox(p, V(8, 12), V(7, 11), 3), white), Vector4.zero);
+            Save("bg_gradient", 8, 256, r =>
+            {
+                var top = new Color(0.55f, 0.77f, 1f);
+                var bottom = new Color(0.86f, 0.93f, 1f);
+                for (int y = 0; y < 256; y++)
+                for (int x = 0; x < 8; x++) r.Px[y * 8 + x] = Color.Lerp(bottom, top, Mathf.SmoothStep(0f, 1f, y / 255f));
+            }, Vector4.zero);
+            Save("bolt_icon", 160, 160, r =>
+            {
+                r.Fill(p => Circle(p, V(80, 74), 70), new Color(0.15f, 0.42f, 0.85f));
+                r.Fill(p => Circle(p, V(80, 82), 66), new Color(0.3f, 0.6f, 1f));
+                r.Fill(p => Circle(p, V(70, 98), 30) , new Color(1f, 1f, 1f, 0.18f));
+                r.Fill(p => Union(RoundBox(p, V(80, 82), V(36, 9), 4), RoundBox(p, V(80, 82), V(9, 36), 4)), new Color(0.1f, 0.25f, 0.55f));
             }, Vector4.zero);
             Save("booster_drill", 160, 160, r =>
             {
@@ -232,7 +270,10 @@ namespace Unscrew.Game.Editor
 
         public static Sprite Get(string name) => AssetDatabase.LoadAssetAtPath<Sprite>($"{Dir}/{name}.png");
 
-        private static void Save(string name, int w, int h, Action<Raster> draw, Vector4 border)
+        private static void Save(string name, int w, int h, Action<Raster> draw, Vector4 border) =>
+            Save(name, w, h, draw, border, new Vector2(0.5f, 0.5f));
+
+        private static void Save(string name, int w, int h, Action<Raster> draw, Vector4 border, Vector2 pivot)
         {
             var r = new Raster(w, h);
             draw(r);
@@ -253,6 +294,11 @@ namespace Unscrew.Game.Editor
             imp.textureCompression = TextureImporterCompression.Uncompressed;
             imp.spritePixelsPerUnit = 100f;
             imp.spriteBorder = border;
+            var settings = new TextureImporterSettings();
+            imp.ReadTextureSettings(settings);
+            settings.spriteAlignment = (int)SpriteAlignment.Custom;
+            settings.spritePivot = pivot;
+            imp.SetTextureSettings(settings);
             imp.SaveAndReimport();
         }
     }

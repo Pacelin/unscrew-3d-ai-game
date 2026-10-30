@@ -18,6 +18,8 @@ namespace Unscrew.Game
         [SerializeField] private Image coinTemplate;
         [SerializeField] private RectTransform flyLayer;
         [SerializeField] private int flyingCoins = 10;
+        [SerializeField] private RectTransform[] stars;
+        [SerializeField] private UiConfetti confetti;
 
         private readonly List<Image> _pool = new List<Image>();
         private Action _onFlown;
@@ -33,6 +35,9 @@ namespace Unscrew.Game
         public void Show(int levelNumber, int reward, int coinsAfter, Action onFlown)
         {
             Open();
+            Feedback.Play(Sfx.Win);
+            if (confetti != null) confetti.Play();
+            StartCoroutine(StarBurst());
             levelText.text = "Level " + levelNumber;
             rewardText.text = "+" + reward;
             coins.Hold(coinsAfter - reward);
@@ -48,7 +53,12 @@ namespace Unscrew.Game
             int landed = 0;
             for (int i = 0; i < n; i++)
             {
-                StartCoroutine(FlyOne(GetCoin(i), target, () => { landed++; coins.Bump(); }));
+                StartCoroutine(FlyOne(GetCoin(i), target, () =>
+                {
+                    landed++;
+                    coins.Bump();
+                    Feedback.Play(Sfx.Coin, 0.6f, 1f + 0.05f * landed);
+                }));
                 yield return Wait(0.05f);
             }
             while (landed < n) yield return null;
@@ -57,6 +67,22 @@ namespace Unscrew.Game
             var cb = _onFlown;
             _onFlown = null;
             cb?.Invoke();
+        }
+
+        /// <summary>Stars slam in one after another (left, right, big middle) with a punch and a chime each.</summary>
+        private IEnumerator StarBurst()
+        {
+            if (stars == null) yield break;
+            foreach (var s in stars) s.localScale = Vector3.zero;
+            yield return Wait(0.2f);
+            int[] order = { 0, 2, 1 };
+            for (int n = 0; n < stars.Length; n++)
+            {
+                var star = stars[n < order.Length && order[n] < stars.Length ? order[n] : n];
+                Feedback.Play(Sfx.Star, 0.9f, 1f + 0.1f * n);
+                StartCoroutine(UiTween.Run(0.32f, k => star.localScale = Vector3.one * Mathf.LerpUnclamped(2.2f, 1f, Anim.OutBack(k))));
+                yield return Wait(0.16f);
+            }
         }
 
         private Image GetCoin(int i)
