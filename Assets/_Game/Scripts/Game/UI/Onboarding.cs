@@ -110,9 +110,9 @@ namespace Unscrew.Game
             SetVisible(true);
             PlaceHand(screen, false);
             SetText(session.MovesMade == 0 ? "Tap a bolt to unscrew it!" : "Bolts fly into the box of their color");
-            // Bubble sits in the lower third, above the booster bar.
+            // Bubble sits just above the booster panel (the toast spot), in the content frame.
             bubble.anchorMin = bubble.anchorMax = new Vector2(0.5f, 0f);
-            bubble.anchoredPosition = new Vector2(0f, 400f);
+            bubble.anchoredPosition = new Vector2(0f, UiTokens.Onboarding.TutorialBottom);
             bubbleArrow.gameObject.SetActive(false);
         }
 
@@ -151,15 +151,17 @@ namespace Unscrew.Game
             var corners = button.position;
             float scale = button.lossyScale.y;
             // Hand above the button pointing down at it, bubble above the hand.
-            PlaceHand(corners + new Vector3(0f, 40f * scale, 0f), true);
+            PlaceHand(corners + new Vector3(0f, UiTokens.Onboarding.TipHandLift * scale, 0f), true);
             if (_tipTextType != (int)type)
             {
                 _tipTextType = (int)type;
                 SetText("New: " + BoosterInfo.Name(type) + "!\n" + BoosterInfo.Description(type));
             }
             bubble.anchorMin = bubble.anchorMax = new Vector2(0.5f, 0f);
-            float x = ((RectTransform)transform).InverseTransformPoint(corners).x;
-            bubble.anchoredPosition = new Vector2(Mathf.Clamp(x, -180f, 180f), 590f);
+            var frame = (RectTransform)bubble.parent;
+            float x = frame.InverseTransformPoint(corners).x - frame.rect.width * 0.5f;
+            float maxX = UiTokens.Onboarding.TipMaxX;
+            bubble.anchoredPosition = new Vector2(Mathf.Clamp(x, -maxX, maxX), UiTokens.Onboarding.TipBottom);
             bubbleArrow.gameObject.SetActive(true);
             var local = bubble.InverseTransformPoint(corners);
             bubbleArrow.anchoredPosition = new Vector2(Mathf.Clamp(local.x, -bubble.rect.width * 0.4f, bubble.rect.width * 0.4f), bubbleArrow.anchoredPosition.y);

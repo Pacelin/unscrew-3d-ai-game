@@ -31,6 +31,7 @@ namespace Unscrew.Game
         [Tooltip("Index = (int)BoosterType")]
         [SerializeField] private Sprite[] boosterIcons;
         [SerializeField] private Sprite coinSprite;
+        [SerializeField] private Sprite coinsSprite;
         [Tooltip("Menu showcase: idle model rotation, degrees per second.")]
         [SerializeField] private float menuSpin = 14f;
 
@@ -45,6 +46,7 @@ namespace Unscrew.Game
         public Toast Toast => toast;
         public AdOverlay Ad => ad;
         public Sprite CoinSprite => coinSprite;
+        public Sprite CoinsSprite => coinsSprite;
         public HudScreen Hud => hud;
         public MenuScreen Menu => menu;
         public WinScreen Win => win;
@@ -58,10 +60,13 @@ namespace Unscrew.Game
         /// <summary>A popup or full screen is over the board (onboarding hides).</summary>
         public bool AnyPopupOpen => win.IsOpen || lose.IsOpen || shop.IsOpen || settings.IsOpen || unlock.IsOpen || ad.IsOpen;
 
-        /// <summary>Toast placed clear of what is under it: over the shop title, otherwise above the booster bar.</summary>
+        /// <summary>
+        /// Toast in a fixed spot that never covers cards or buttons: above the bottom safe edge in the shop (as in the
+        /// mockup), above the booster panel in game, above the level pill in the menu.
+        /// </summary>
         public void ShowToast(string message)
         {
-            toast.Show(message, shop.IsOpen ? 0.885f : Mode == UiMode.Menu ? 0.36f : 0.215f);
+            toast.Show(message, shop.IsOpen ? UiTokens.Toast.BottomShop : Mode == UiMode.Menu ? UiTokens.Toast.BottomMenu : UiTokens.Toast.BottomGame);
         }
 
         public Sprite BoosterIcon(BoosterType t)
@@ -172,6 +177,8 @@ namespace Unscrew.Game
             _input.enabled = playing;
             Flow.Presenter.Tray.gameObject.SetActive(playing);
             Flow.Presenter.Level.AutoSpin = playing ? 0f : menuSpin;
+            // The model fits the menu turntable area or the gameplay area (UiLayout zones).
+            Flow.Presenter.Level.MenuFraming = !playing;
         }
 
         // ---------- boosters ----------
@@ -212,7 +219,7 @@ namespace Unscrew.Game
             _unlocked.Clear();
             int reward = Player.CompleteLevel(Flow.IsHard, _unlocked);
             Settings.Vibrate(40);
-            win.Show(level, reward, Player.Wallet.Coins, () =>
+            win.Show(level, Flow.IsHard, reward, Player.Wallet.Coins, () =>
             {
                 if (_unlocked.Count > 0) unlock.Show(_unlocked, Player.Config.freeBoostersOnUnlock, null);
             });

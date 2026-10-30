@@ -1,13 +1,17 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEditor;
 using UnityEngine;
+using C = Unscrew.Game.UiTokens.Colors;
+using R = Unscrew.Game.UiTokens.Radius;
 
 namespace Unscrew.Game.Editor
 {
     /// <summary>
-    /// Procedural UI sprites (rounded panels, chunky button, soft shadow, icons) drawn with signed distance functions
-    /// and saved as PNG into Assets/_Game/UI/Sprites. Deterministic: rebuilding produces identical files.
+    /// Procedural UI sprites drawn with signed distance functions and saved as PNG into Assets/_Game/UI/Sprites:
+    /// 9-sliced rounded rects with the exact token radii (1 texel = 1 canvas unit) and icons traced from the SVGs
+    /// of the Claude Design mockups (Docs/Design/*.dc.html). Deterministic: rebuilding produces identical files.
     /// </summary>
     public static class UiSpriteFactory
     {
@@ -46,6 +50,40 @@ namespace Unscrew.Game.Editor
             }
         }
 
+        /// <summary>Maps texture pixels to SVG viewBox coordinates (y down) so icons are written with the mockup numbers.</summary>
+        private sealed class Svg
+        {
+            private readonly Raster _r;
+            private readonly float _k;
+
+            public Svg(Raster r, float viewBox)
+            {
+                _r = r;
+                _k = r.W / viewBox;
+            }
+
+            private Vector2 ToSvg(Vector2 px) => new Vector2(px.x / _k, (_r.H - px.y) / _k);
+
+            public void Fill(Func<Vector2, float> svgSdf, Color c) => _r.Fill(p => svgSdf(ToSvg(p)) * _k, c);
+
+            /// <summary>Round-capped, round-joined polyline of stroke width <paramref name="w"/>.</summary>
+            public void Stroke(float w, Color c, params Vector2[] pts) => Fill(p => Polyline(p, pts) - w * 0.5f, c);
+
+            public void Strokes(float w, Color c, params Vector2[][] lines) => Fill(p =>
+            {
+                float d = float.MaxValue;
+                foreach (var l in lines) d = Mathf.Min(d, Polyline(p, l));
+                return d - w * 0.5f;
+            }, c);
+
+            /// <summary>Circle with a centered stroke (SVG circle fill + stroke).</summary>
+            public void Disc(Vector2 c, float r, Color fill, Color stroke, float w)
+            {
+                if (w > 0f) Fill(p => Circle(p, c, r + w * 0.5f), stroke);
+                Fill(p => Circle(p, c, r - w * 0.5f), fill);
+            }
+        }
+
         // ---------- sdf ----------
 
         private static float Circle(Vector2 p, Vector2 c, float r) => (p - c).magnitude - r;
@@ -65,6 +103,14 @@ namespace Unscrew.Game.Editor
             return (pa - ba * h).magnitude - r;
         }
 
+        private static float Polyline(Vector2 p, Vector2[] pts)
+        {
+            if (pts.Length == 1) return (p - pts[0]).magnitude;
+            float d = float.MaxValue;
+            for (int i = 0; i + 1 < pts.Length; i++) d = Mathf.Min(d, Capsule(p, pts[i], pts[i + 1], 0f));
+            return d;
+        }
+
         /// <summary>Convex/concave polygon SDF (Inigo Quilez).</summary>
         private static float Poly(Vector2 p, params Vector2[] v)
         {
@@ -82,127 +128,124 @@ namespace Unscrew.Game.Editor
             return s * Mathf.Sqrt(d);
         }
 
-        private static float Union(float a, float b) => Mathf.Min(a, b);
-        private static float Sub(float a, float b) => Mathf.Max(a, -b);
-        private static float Inter(float a, float b) => Mathf.Max(a, b);
         private static Vector2 V(float x, float y) => new Vector2(x, y);
 
-        private static Vector2 Rot(Vector2 p, Vector2 c, float deg)
+        /// <summary>Points of an arc in SVG coordinates (y down, degrees; a1 &lt; a0 runs counter-clockwise on screen).</summary>
+        private static Vector2[] Arc(Vector2 c, float r, float a0, float a1, Vector2? from = null, Vector2? to = null)
         {
-            float r = deg * Mathf.Deg2Rad, cs = Mathf.Cos(r), sn = Mathf.Sin(r);
-            var d = p - c;
-            return c + new Vector2(d.x * cs - d.y * sn, d.x * sn + d.y * cs);
-        }
-
-        private static float Star(Vector2 p, Vector2 c, float rOut, float rIn)
-        {
-            var v = new Vector2[10];
-            for (int i = 0; i < 10; i++)
+            const int n = 28;
+            var list = new List<Vector2>();
+            if (from.HasValue) list.Add(from.Value);
+            for (int i = 0; i <= n; i++)
             {
-                float a = (90f + i * 36f) * Mathf.Deg2Rad;
-                float r = i % 2 == 0 ? rOut : rIn;
-                v[i] = c + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r;
+                float a = Mathf.Lerp(a0, a1, i / (float)n) * Mathf.Deg2Rad;
+                list.Add(c + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * r);
             }
-            return Poly(p, v);
+            if (to.HasValue) list.Add(to.Value);
+            return list.ToArray();
         }
 
         // ---------- build ----------
 
-        /// <summary>Writes all sprites and returns them by name.</summary>
+        private static readonly HashSet<string> Written = new HashSet<string>();
+
+        /// <summary>Writes all sprites (and deletes PNGs of sprites that are no longer produced).</summary>
         public static void BuildAll()
         {
             if (!AssetDatabase.IsValidFolder("Assets/_Game/UI")) AssetDatabase.CreateFolder("Assets/_Game", "UI");
             if (!AssetDatabase.IsValidFolder(Dir)) AssetDatabase.CreateFolder("Assets/_Game/UI", "Sprites");
-
+            Written.Clear();
             var white = Color.white;
-            // Panels / shapes (tinted at runtime by Image.color).
-            Save("panel", 128, 128, r => r.Fill(p => RoundBox(p, V(64, 64), V(63, 63), 44), white), new Vector4(48, 48, 48, 48));
-            Save("shadow", 160, 160, r => r.Fill(p => RoundBox(p, V(80, 80), V(56, 56), 40) + 12f, new Color(1, 1, 1, 1f), 26f), new Vector4(70, 70, 70, 70));
-            Save("button", 128, 136, r =>
-            {
-                r.Fill(p => RoundBox(p, V(64, 68), V(63, 67), 42), new Color(0.66f, 0.66f, 0.66f));          // lip (darker shade of the tint)
-                r.Fill(p => RoundBox(p, V(64, 76), V(63, 59), 42), new Color(0.94f, 0.94f, 0.94f));          // face
-                r.Fill(p => RoundBox(p, V(64, 106), V(48, 20), 18), new Color(1f, 1f, 1f, 0.9f));            // gloss
-            }, new Vector4(50, 54, 50, 50));
-            Save("circle", 128, 128, r => r.Fill(p => Circle(p, V(64, 64), 63), white), new Vector4(63, 63, 63, 63));
-            Save("ring", 128, 128, r => r.Fill(p => Mathf.Abs(Circle(p, V(64, 64), 56)) - 7f, white), new Vector4(63, 63, 63, 63));
-            Save("frame", 128, 128, r => r.Fill(p => Mathf.Abs(RoundBox(p, V(64, 64), V(58, 58), 44)) - 5f, white), new Vector4(50, 50, 50, 50));
-            Save("fade", 8, 256, r => { for (int y = 0; y < 256; y++) for (int x = 0; x < 8; x++) r.Px[y * 8 + x] = new Color(1, 1, 1, Mathf.SmoothStep(0f, 1f, y / 255f)); }, Vector4.zero);
-            Save("rays", 256, 256, r => r.Fill(p =>
-            {
-                var d = p - V(128, 128);
-                float ang = Mathf.Atan2(d.y, d.x) * Mathf.Rad2Deg;
-                float sector = Mathf.Abs(Mathf.Repeat(ang, 30f) - 15f) - 6f; // 12 rays
-                return Mathf.Max(sector * d.magnitude * 0.02f, d.magnitude - 126f);
-            }, new Color(1, 1, 1, 0.55f), 1.5f), Vector4.zero);
 
-            // White icons.
-            Save("icon_pause", 128, 128, r => r.Fill(p => Union(RoundBox(p, V(46, 64), V(12, 34), 7), RoundBox(p, V(82, 64), V(12, 34), 7)), white), Vector4.zero);
-            Save("icon_close", 128, 128, r => r.Fill(p => Union(Capsule(p, V(36, 36), V(92, 92), 12), Capsule(p, V(36, 92), V(92, 36), 12)), white), Vector4.zero);
-            Save("icon_plus", 128, 128, r => r.Fill(p => Union(Capsule(p, V(64, 28), V(64, 100), 14), Capsule(p, V(28, 64), V(100, 64), 14)), white), Vector4.zero);
-            Save("icon_check", 128, 128, r => r.Fill(p => Union(Capsule(p, V(30, 66), V(54, 40), 12), Capsule(p, V(54, 40), V(98, 90), 12)), white), Vector4.zero);
-            Save("icon_play", 128, 128, r => r.Fill(p => Poly(p, V(46, 34), V(98, 64), V(46, 94)) - 6f, white), Vector4.zero);
-            Save("icon_home", 128, 128, r => r.Fill(p =>
+            // Shapes: tinted by Image.color. Rounded rects with the token radii, 1 texel = 1 canvas unit.
+            foreach (float r in new[] { R.S, R.M - UiTokens.Button.SecondaryBorder, R.M, R.Booster, R.L, R.UnlockTile }) RoundRect(r);
+            // Pill / circle up to 256 units high: the sliced borders shrink to half the height of smaller rects.
+            Save("pill", 256, 256, ras => ras.Fill(p => Circle(p, V(128, 128), 128), white), new Vector4(128, 128, 128, 128));
+            // Active booster ring: radius 48 + 8 outside the 208 button, 8 thick (box-shadow 0 0 0 4px).
+            Save("ring_56", 128, 128, ras => ras.Fill(p => Mathf.Abs(RoundBox(p, V(64, 64), V(64, 64), 56) + 4f) - 4f, white), new Vector4(60, 60, 60, 60));
+            // Drill target: 48 design px circle, gold 4px spread + 10px glow at 35%.
+            Save("drill_ring", 136, 136, ras =>
             {
-                float roof = Poly(p, V(64, 108), V(20, 68), V(108, 68)) - 4f;
-                float body = RoundBox(p, V(64, 44), V(32, 30), 6);
-                float door = RoundBox(p, V(64, 30), V(10, 18), 4);
-                return Sub(Union(roof, body), door);
-            }, white), Vector4.zero);
-            Save("icon_gear", 128, 128, r => r.Fill(p =>
+                ras.Fill(p => Mathf.Abs(Circle(p, V(68, 68), 62f)) - 6f, new Color(C.Coin.r, C.Coin.g, C.Coin.b, 0.35f));
+                ras.Fill(p => Mathf.Abs(Circle(p, V(68, 68), 52f)) - 4f, C.Coin);
+            }, Vector4.zero);
+
+            // White stroke icons (tinted), 24-unit viewBox unless noted.
+            Icon("icon_pause", 24, 96, s => s.Strokes(3.5f, white, new[] { V(8, 5), V(8, 19) }, new[] { V(16, 5), V(16, 19) }));
+            Icon("icon_gear", 24, 112, s =>
             {
-                float d = Circle(p, V(64, 64), 36);
-                for (int i = 0; i < 8; i++) d = Union(d, RoundBox(Rot(p, V(64, 64), i * 45f), V(64, 104), V(11, 14), 4));
-                return Sub(d, Circle(p, V(64, 64), 15));
-            }, white), Vector4.zero);
-            Save("icon_lock", 128, 128, r => r.Fill(p =>
+                s.Fill(p => Mathf.Abs(Circle(p, V(12, 12), 3.5f)) - 1.25f, white);
+                s.Strokes(2.5f, white, new[] { V(12, 2), V(12, 5) }, new[] { V(12, 19), V(12, 22) }, new[] { V(2, 12), V(5, 12) },
+                    new[] { V(19, 12), V(22, 12) }, new[] { V(4.9f, 4.9f), V(7, 7) }, new[] { V(17, 17), V(19.1f, 19.1f) },
+                    new[] { V(4.9f, 19.1f), V(7, 17) }, new[] { V(17, 7), V(19.1f, 4.9f) });
+            });
+            Icon("icon_back", 24, 104, s => s.Stroke(3f, white, V(15, 5), V(8, 12), V(15, 19)));
+            Icon("icon_plus", 18, 72, s => s.Strokes(3f, white, new[] { V(9, 3), V(9, 15) }, new[] { V(3, 9), V(15, 9) }));
+            Icon("icon_play", 24, 112, s => s.Fill(p => Poly(p, V(7.8f, 5.4f), V(7.8f, 18.6f), V(19.4f, 12f)) - 0.9f, white));
+            Icon("icon_cart", 24, 144, s =>
             {
-                float body = RoundBox(p, V(64, 46), V(38, 30), 9);
-                float shackle = Inter(Mathf.Abs(Circle(p, V(64, 78), 24)) - 7f, -(p.y - 70f));
-                float hole = Union(Circle(p, V(64, 50), 8), RoundBox(p, V(64, 38), V(4, 10), 2));
-                return Sub(Union(body, shackle), hole);
-            }, white), Vector4.zero);
-            Save("icon_bag", 128, 128, r => r.Fill(p =>
+                s.Stroke(2.5f, white, V(3, 5), V(5, 5), V(7.5f, 16), V(18.5f, 16), V(21, 8), V(7, 8));
+                s.Fill(p => Mathf.Min(Circle(p, V(9.5f, 20), 2.75f), Circle(p, V(17, 20), 2.75f)), white);
+            });
+            Icon("icon_lock", 32, 128, s => s.Fill(p => Mathf.Min(
+                Mathf.Abs(RoundBox(p, V(16, 20.5f), V(9, 6.5f), 3f)) - 1.75f,
+                Polyline(p, Arc(V(16, 10), 5f, 180f, 360f, V(11, 14), V(21, 14))) - 1.75f), white));
+            Icon("icon_arrow", 24, 96, s => s.Strokes(3f, white, new[] { V(5, 12), V(19, 12) }, new[] { V(13, 6), V(19, 12), V(13, 18) }));
+            Icon("icon_sound", 24, 112, s => s.Strokes(2.5f, white,
+                new[] { V(4, 9), V(4, 15), V(8, 15), V(13, 19), V(13, 5), V(8, 9), V(4, 9) },
+                Arc(V(12.93f, 12), 5f, -44.4f, 44.4f), Arc(V(12.98f, 12), 8.5f, -44.9f, 44.9f)));
+            Icon("icon_vibration", 24, 112, s =>
             {
-                float body = RoundBox(p, V(64, 50), V(40, 36), 12);
-                float handle = Inter(Mathf.Abs(Circle(p, V(64, 86), 20)) - 6f, -(p.y - 84f));
-                return Union(body, handle);
-            }, white), Vector4.zero);
-            Save("icon_video", 128, 128, r => r.Fill(p =>
-            {
-                float body = RoundBox(p, V(54, 64), V(38, 30), 9);
-                float lens = Poly(p, V(88, 64), V(116, 88), V(116, 40)) - 3f;
-                return Sub(Union(body, lens), Poly(p, V(42, 50), V(68, 64), V(42, 78)));
-            }, white), Vector4.zero);
+                s.Fill(p => Mathf.Abs(RoundBox(p, V(12, 12), V(4, 9), 2f)) - 1.25f, white);
+                s.Strokes(2.5f, white, new[] { V(4, 8), V(4, 16) }, new[] { V(20, 8), V(20, 16) });
+            });
+            Icon("icon_restart", 24, 96, s => s.Strokes(3f, white, Arc(V(12, 12), 8f, 180f, -134.5f), new[] { V(4, 4), V(4, 9), V(9, 9) }));
+            Icon("icon_home", 24, 96, s => s.Strokes(3f, white, new[] { V(4, 11), V(12, 4), V(20, 11) }, new[] { V(6, 10), V(6, 20), V(18, 20), V(18, 10) }));
+            Icon("icon_drill", 56, 256, s => s.Strokes(4f, white,
+                new[] { V(8, 20), V(34, 20), V(34, 32), V(8, 32), V(8, 20) },
+                new[] { V(34, 22), V(46, 26), V(34, 30) },
+                new[] { V(16, 32), V(12, 46), V(20, 46), V(24, 32) }));
+            Icon("icon_magnet", 56, 256, s => s.Strokes(5f, white,
+                Arc(V(28, 28), 14f, 180f, 0f, V(14, 10), V(42, 10)), new[] { V(10, 10), V(18, 10) }, new[] { V(38, 10), V(46, 10) }));
 
             // Colored icons.
-            Save("coin", 160, 160, r =>
+            Icon("coin", 36, 144, s =>
             {
-                r.Fill(p => Circle(p, V(80, 78), 74), new Color(0.86f, 0.52f, 0.06f));
-                r.Fill(p => Circle(p, V(80, 84), 70), new Color(1f, 0.76f, 0.16f));
-                r.Fill(p => Mathf.Abs(Circle(p, V(80, 84), 50)) - 4f, new Color(0.93f, 0.6f, 0.08f));
-                r.Fill(p => RoundBox(p, V(80, 84), V(10, 28), 6), new Color(0.93f, 0.6f, 0.08f));
-                r.Fill(p => RoundBox(Rot(p, V(52, 118), -40f), V(52, 118), V(16, 7), 6), new Color(1f, 0.95f, 0.7f, 0.9f));
-            }, Vector4.zero);
-            Save("star", 160, 160, r =>
+                s.Disc(V(18, 18), 16f, C.Coin, C.CoinEdge, 3f);
+                s.Fill(p => RoundBox(p, V(18, 18), V(3, 8), 3f), C.CoinEdge);
+            });
+            Icon("coins", 56, 192, s =>
             {
-                r.Fill(p => Star(p, V(80, 76), 78, 38) - 4f, new Color(0.9f, 0.55f, 0.05f));
-                r.Fill(p => Star(p, V(80, 80), 70, 34), new Color(1f, 0.8f, 0.18f));
-                r.Fill(p => Star(p, V(80, 84), 40, 20), new Color(1f, 0.9f, 0.45f));
-            }, Vector4.zero);
-            Save("booster_slot", 160, 160, r =>
+                s.Disc(V(22, 32), 14f, C.Coin, C.CoinEdge, 3f);
+                s.Disc(V(34, 24), 14f, C.Coin, C.CoinEdge, 3f);
+                s.Fill(p => RoundBox(p, V(34, 24), V(3, 8), 3f), C.CoinEdge);
+            });
+            Icon("icon_hole", 56, 256, s =>
             {
-                r.Fill(p => Circle(p, V(72, 70), 62), new Color(0.55f, 0.62f, 0.76f));
-                r.Fill(p => Circle(p, V(72, 70), 48), new Color(0.18f, 0.22f, 0.32f));
-                r.Fill(p => Circle(p, V(72, 64), 40), new Color(0.12f, 0.15f, 0.22f));
-                r.Fill(p => Mathf.Abs(Circle(p, V(72, 70), 55)) - 2.5f, new Color(0.75f, 0.81f, 0.92f));
-                // Sparkle instead of a "+" (the HUD button already shows a green "+" badge when empty).
-                r.Fill(p => Star(p, V(126, 122), 26, 8), new Color(1f, 0.85f, 0.25f));
-                r.Fill(p => Star(p, V(104, 146), 12, 4), new Color(1f, 0.93f, 0.6f));
-            }, Vector4.zero);
+                s.Disc(V(26, 30), 18f, C.Hole, C.HoleRing, 4f);
+                s.Disc(V(42, 14), 10f, C.Success, C.Success, 0f);
+                s.Strokes(3f, white, new[] { V(42, 9), V(42, 19) }, new[] { V(37, 14), V(47, 14) });
+            });
+            Icon("icon_hole_white", 56, 160, s =>
+            {
+                s.Disc(V(26, 30), 18f, C.Hole, white, 4f);
+                s.Disc(V(42, 14), 10f, C.Success, white, 2f);
+                s.Strokes(3f, white, new[] { V(42, 9), V(42, 19) }, new[] { V(37, 14), V(47, 14) });
+            });
+            Icon("icon_stuck", 56, 256, s =>
+            {
+                s.Disc(V(28, 28), 20f, C.Hole, C.HoleRing, 4f);
+                s.Strokes(5f, C.Danger, new[] { V(20, 20), V(36, 36) }, new[] { V(36, 20), V(20, 36) });
+            });
+            var star = new[] { V(12, 2.5f), V(14.9f, 8.4f), V(21.4f, 9.3f), V(16.7f, 13.9f), V(17.8f, 20.4f), V(12, 17.3f), V(6.2f, 20.4f), V(7.3f, 13.9f), V(2.6f, 9.3f), V(9.1f, 8.4f) };
+            Icon("star", 24, 192, s =>
+            {
+                s.Fill(p => Poly(p, star) - 0.6f, C.CoinEdge);
+                s.Fill(p => Poly(p, star) + 0.6f, C.Coin);
+            });
 
             // Onboarding / transitions / confetti.
-            var navy = new Color(0.16f, 0.19f, 0.34f);
+            var navy = C.Ink;
             Func<Vector2, float> hand = p =>
             {
                 float finger = Capsule(p, V(70, 112), V(70, 178), 17);
@@ -210,62 +253,48 @@ namespace Unscrew.Game.Editor
                 float k1 = Circle(p, V(103, 112), 16);
                 float k2 = Circle(p, V(126, 104), 15);
                 float thumb = Capsule(p, V(52, 78), V(30, 108), 14);
-                return Union(Union(finger, palm), Union(Union(k1, k2), thumb));
+                return Mathf.Min(Mathf.Min(finger, palm), Mathf.Min(Mathf.Min(k1, k2), thumb));
             };
-            Save("hand", 160, 200, r =>
+            Save("hand", 160, 200, ras =>
             {
-                r.Fill(p => hand(p + V(4, 6)) - 7f, new Color(0f, 0f, 0f, 0.25f));
-                r.Fill(p => hand(p) - 7f, navy);
-                r.Fill(hand, Color.white);
-                r.Fill(p => Union(Capsule(p, V(103, 100), V(103, 112), 1.5f), Capsule(p, V(126, 92), V(126, 104), 1.5f)), new Color(0.75f, 0.79f, 0.9f));
-                r.Fill(p => RoundBox(p, V(92, 22), V(40, 16), 8), navy);
-                r.Fill(p => RoundBox(p, V(92, 24), V(34, 10), 6), new Color(0.24f, 0.61f, 1f));
+                ras.Fill(p => hand(p + V(4, 6)) - 7f, new Color(0f, 0f, 0f, 0.25f));
+                ras.Fill(p => hand(p) - 7f, navy);
+                ras.Fill(hand, Color.white);
+                ras.Fill(p => Mathf.Min(Capsule(p, V(103, 100), V(103, 112), 1.5f), Capsule(p, V(126, 92), V(126, 104), 1.5f)), C.HoleRing);
+                ras.Fill(p => RoundBox(p, V(92, 22), V(40, 16), 8), navy);
+                ras.Fill(p => RoundBox(p, V(92, 24), V(34, 10), 6), C.Primary);
             }, Vector4.zero, new Vector2(70f / 160f, 194f / 200f));
-            Save("arrow_down", 64, 40, r => r.Fill(p => Poly(p, V(4, 38), V(60, 38), V(32, 4)) - 2f, white), Vector4.zero);
-            Save("confetti", 16, 24, r => r.Fill(p => RoundBox(p, V(8, 12), V(7, 11), 3), white), Vector4.zero);
-            Save("bg_gradient", 8, 256, r =>
+            Save("arrow_down", 64, 40, ras => ras.Fill(p => Poly(p, V(4, 38), V(60, 38), V(32, 4)) - 2f, white), Vector4.zero);
+            Save("confetti", 16, 24, ras => ras.Fill(p => RoundBox(p, V(8, 12), V(7, 11), 3), white), Vector4.zero);
+            Icon("bolt_icon", 36, 160, s =>
             {
-                var top = new Color(0.55f, 0.77f, 1f);
-                var bottom = new Color(0.86f, 0.93f, 1f);
-                for (int y = 0; y < 256; y++)
-                for (int x = 0; x < 8; x++) r.Px[y * 8 + x] = Color.Lerp(bottom, top, Mathf.SmoothStep(0f, 1f, y / 255f));
-            }, Vector4.zero);
-            Save("bolt_icon", 160, 160, r =>
-            {
-                r.Fill(p => Circle(p, V(80, 74), 70), new Color(0.15f, 0.42f, 0.85f));
-                r.Fill(p => Circle(p, V(80, 82), 66), new Color(0.3f, 0.6f, 1f));
-                r.Fill(p => Circle(p, V(70, 98), 30) , new Color(1f, 1f, 1f, 0.18f));
-                r.Fill(p => Union(RoundBox(p, V(80, 82), V(36, 9), 4), RoundBox(p, V(80, 82), V(9, 36), 4)), new Color(0.1f, 0.25f, 0.55f));
-            }, Vector4.zero);
-            Save("booster_drill", 160, 160, r =>
-            {
-                var grey = new Color(0.72f, 0.76f, 0.84f);
-                var dark = new Color(0.27f, 0.3f, 0.4f);
-                r.Fill(p => Poly(p, V(112, 112), V(156, 96), V(112, 80)), grey);                        // bit
-                r.Fill(p => Union(Capsule(p, V(120, 108), V(128, 88), 3), Capsule(p, V(134, 103), V(140, 90), 3)), new Color(0.5f, 0.54f, 0.64f));
-                r.Fill(p => RoundBox(p, V(110, 96), V(8, 20), 4), dark);                                  // chuck
-                r.Fill(p => RoundBox(Rot(p, V(52, 56), -12f), V(52, 56), V(17, 38), 10), dark);           // handle
-                r.Fill(p => RoundBox(p, V(66, 98), V(44, 26), 14), new Color(1f, 0.55f, 0.12f));         // body
-                r.Fill(p => RoundBox(p, V(62, 108), V(32, 7), 5), new Color(1f, 0.78f, 0.45f));          // highlight
-                r.Fill(p => Circle(p, V(40, 98), 9), dark);
-            }, Vector4.zero);
-            Save("booster_magnet", 160, 160, r =>
-            {
-                var red = new Color(0.93f, 0.22f, 0.28f);
-                var tip = new Color(0.86f, 0.9f, 0.96f);
-                Func<Vector2, float> u = p =>
-                {
-                    float arc = Inter(Mathf.Abs(Circle(p, V(80, 76), 44)) - 18f, p.y - 76f);
-                    float l = RoundBox(p, V(36, 108), V(18, 34), 3);
-                    float rr = RoundBox(p, V(124, 108), V(18, 34), 3);
-                    return Union(arc, Union(l, rr));
-                };
-                r.Fill(u, red);
-                r.Fill(p => Inter(u(p), -(p.y - 116f)), tip);
-                r.Fill(p => Inter(Mathf.Abs(Circle(p, V(80, 76), 50)) - 3f, Inter(p.y - 70f, -(p.x - 52f))), new Color(1f, 0.6f, 0.62f, 0.8f));
-            }, Vector4.zero);
+                s.Disc(V(18, 18), 16f, C.Primary, C.PrimaryEdge, 3f);
+                s.Strokes(3.5f, white, new[] { V(12, 18), V(24, 18) }, new[] { V(18, 12), V(18, 24) });
+            });
 
+            DeleteStale();
             AssetDatabase.Refresh();
+        }
+
+        private static void RoundRect(float radius)
+        {
+            int r = Mathf.RoundToInt(radius);
+            int size = 2 * r + 8;
+            Save("rr_" + r, size, size, ras => ras.Fill(p => RoundBox(p, V(size * 0.5f, size * 0.5f), V(size * 0.5f, size * 0.5f), r), Color.white),
+                new Vector4(r + 1, r + 1, r + 1, r + 1));
+        }
+
+        private static void Icon(string name, float viewBox, int size, Action<Svg> draw) =>
+            Save(name, size, size, ras => draw(new Svg(ras, viewBox)), Vector4.zero);
+
+        /// <summary>Removes PNGs left over from older versions of the factory.</summary>
+        private static void DeleteStale()
+        {
+            foreach (var guid in AssetDatabase.FindAssets("t:Texture2D", new[] { Dir }))
+            {
+                var path = AssetDatabase.GUIDToAssetPath(guid);
+                if (!Written.Contains(Path.GetFileNameWithoutExtension(path))) AssetDatabase.DeleteAsset(path);
+            }
         }
 
         public static Sprite Get(string name) => AssetDatabase.LoadAssetAtPath<Sprite>($"{Dir}/{name}.png");
@@ -275,6 +304,7 @@ namespace Unscrew.Game.Editor
 
         private static void Save(string name, int w, int h, Action<Raster> draw, Vector4 border, Vector2 pivot)
         {
+            Written.Add(name);
             var r = new Raster(w, h);
             draw(r);
             var tex = new Texture2D(w, h, TextureFormat.RGBA32, false);
@@ -294,10 +324,12 @@ namespace Unscrew.Game.Editor
             imp.textureCompression = TextureImporterCompression.Uncompressed;
             imp.spritePixelsPerUnit = 100f;
             imp.spriteBorder = border;
+            imp.npotScale = TextureImporterNPOTScale.None;
             var settings = new TextureImporterSettings();
             imp.ReadTextureSettings(settings);
             settings.spriteAlignment = (int)SpriteAlignment.Custom;
             settings.spritePivot = pivot;
+            settings.spriteMeshType = SpriteMeshType.FullRect;
             imp.SetTextureSettings(settings);
             imp.SaveAndReimport();
         }

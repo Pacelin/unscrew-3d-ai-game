@@ -4,11 +4,11 @@ using UnityEngine.UI;
 
 namespace Unscrew.Game
 {
-    /// <summary>Main menu over the slowly spinning current level: title, Play (level number), coins, Shop, Settings.</summary>
+    /// <summary>Main menu (Menu.dc.html) over the slowly spinning current level: logo, level pill (+HARD), Shop, Play, coins, settings.</summary>
     public sealed class MenuScreen : UiPanel
     {
         [SerializeField] private Button playButton;
-        [SerializeField] private TMP_Text playLabel;
+        [SerializeField] private TMP_Text levelText;
         [SerializeField] private GameObject hardTag;
         [SerializeField] private CoinCounter coins;
         [SerializeField] private Button shopButton;
@@ -30,7 +30,7 @@ namespace Unscrew.Game
         {
             base.Open();
             int level = _root.Player.Progress.CurrentLevel;
-            playLabel.text = "Level " + level;
+            levelText.text = "Level " + level;
             hardTag.SetActive(Unscrew.Core.DifficultyCurve.IsHardLevel(level));
         }
     }

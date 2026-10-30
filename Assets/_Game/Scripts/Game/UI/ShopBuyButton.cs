@@ -3,68 +3,65 @@ using TMPro;
 using Unscrew.Core;
 using UnityEngine;
 using UnityEngine.UI;
+using C = Unscrew.Game.UiTokens.Colors;
 
 namespace Unscrew.Game
 {
-    /// <summary>Price button of one ShopItem: amount on top ("x3"), price with a coin (or "FREE" with an ad icon).</summary>
+    /// <summary>
+    /// Buy button of one ShopItem (Shop.dc.html): green with coin + price; not enough coins = grey with a red price
+    /// (still tappable, explains why); free coins = blue "Free" with a play icon, grey with the "0:42" timer on cooldown.
+    /// </summary>
     public sealed class ShopBuyButton : MonoBehaviour
     {
         [SerializeField] private Button button;
         [SerializeField] private Image face;
-        [SerializeField] private TMP_Text amountText;
+        [SerializeField] private Image edge;
         [SerializeField] private TMP_Text priceText;
         [SerializeField] private GameObject coinIcon;
         [SerializeField] private GameObject adIcon;
 
-        private Color _faceColor;
-        private bool _colorRead;
-        private int _cooldownShown;
+        private int _cooldownShown = -1;
+        private ShopResult _result;
 
         public ShopItem Item { get; private set; }
+        public bool IsFree => Item != null && Item.price <= 0;
         public event Action<ShopBuyButton> Clicked;
 
-        private void Awake()
-        {
-            ReadColor();
-            button.onClick.AddListener(() => Clicked?.Invoke(this));
-        }
-
-        private void ReadColor()
-        {
-            if (_colorRead) return;
-            _faceColor = face.color;
-            _colorRead = true;
-        }
+        private void Awake() => button.onClick.AddListener(() => Clicked?.Invoke(this));
 
         public void Bind(ShopItem item)
         {
-            ReadColor();
             Item = item;
-            bool free = item.price <= 0;
-            amountText.text = item.kind == ShopItemKind.Coins ? "+" + item.amount : "x" + item.amount;
-            priceText.text = free ? "FREE" : item.price.ToString();
-            coinIcon.SetActive(!free);
-            adIcon.SetActive(free);
+            _cooldownShown = -1;
+            Apply();
         }
 
-        /// <summary>Rewarded video on cooldown: grey face with the remaining time instead of "FREE" (0 restores it).</summary>
+        /// <summary>Rewarded video cooldown in whole seconds (0 = ready). Cheap when unchanged.</summary>
         public void SetCooldown(int secondsLeft)
         {
             if (Item == null || secondsLeft == _cooldownShown) return;
             _cooldownShown = secondsLeft;
-            bool cooling = secondsLeft > 0;
-            priceText.text = cooling ? AdCooldown.Format(secondsLeft) : "FREE";
-            adIcon.SetActive(!cooling && Item.price <= 0);
-            face.color = cooling ? new Color(0.76f, 0.78f, 0.84f) : _faceColor;
+            Apply();
         }
 
-        /// <summary>NotEnoughCoins: grey face and red price, still tappable (explains why).</summary>
         public void SetResult(ShopResult canBuy)
         {
-            bool ok = canBuy == ShopResult.Success;
-            _cooldownShown = 0;
-            face.color = ok ? _faceColor : new Color(0.76f, 0.78f, 0.84f);
-            priceText.color = canBuy == ShopResult.NotEnoughCoins ? new Color(0.86f, 0.18f, 0.2f) : Color.white;
+            _result = canBuy;
+            Apply();
+        }
+
+        private void Apply()
+        {
+            if (Item == null) return;
+            bool cooling = IsFree && _cooldownShown > 0;
+            bool poor = !IsFree && _result == ShopResult.NotEnoughCoins;
+            bool grey = cooling || poor || _result == ShopResult.Locked;
+            coinIcon.SetActive(!IsFree);
+            adIcon.SetActive(IsFree && !cooling);
+            priceText.text = IsFree ? (cooling ? AdCooldown.Format(_cooldownShown) : "Free") : Item.price.ToString();
+            face.color = grey ? C.Locked : IsFree ? C.Primary : C.Success;
+            edge.color = grey ? C.NeutralEdge : IsFree ? C.PrimaryEdge : C.SuccessEdge;
+            priceText.color = poor ? C.PriceRed : grey ? C.Muted : Color.white;
         }
 
         public void Nudge()

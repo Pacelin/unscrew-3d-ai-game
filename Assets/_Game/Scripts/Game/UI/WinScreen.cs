@@ -7,7 +7,7 @@ using UnityEngine.UI;
 
 namespace Unscrew.Game
 {
-    /// <summary>Level complete: reward from PlayerState.CompleteLevel, coins fly into the counter, Next.</summary>
+    /// <summary>Level complete (Win.dc.html): stars, reward from PlayerState.CompleteLevel, coins fly into the counter, Next level.</summary>
     public sealed class WinScreen : UiPanel
     {
         [SerializeField] private TMP_Text levelText;
@@ -32,13 +32,13 @@ namespace Unscrew.Game
         }
 
         /// <summary><paramref name="onFlown"/> runs after the coins landed (unlock popup).</summary>
-        public void Show(int levelNumber, int reward, int coinsAfter, Action onFlown)
+        public void Show(int levelNumber, bool hard, int reward, int coinsAfter, Action onFlown)
         {
             Open();
             Feedback.Play(Sfx.Win);
             if (confetti != null) confetti.Play();
             StartCoroutine(StarBurst());
-            levelText.text = "Level " + levelNumber;
+            levelText.text = "Level " + levelNumber + (hard ? " · Hard" : "");
             rewardText.text = "+" + reward;
             coins.Hold(coinsAfter - reward);
             _onFlown = onFlown;

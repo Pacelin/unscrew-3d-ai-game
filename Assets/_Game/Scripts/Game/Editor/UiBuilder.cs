@@ -6,13 +6,26 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.TextCore.LowLevel;
 using UnityEngine.UI;
+using B = Unscrew.Game.UiTokens.Button;
+using BO = Unscrew.Game.UiTokens.Booster;
+using C = Unscrew.Game.UiTokens.Colors;
+using F = Unscrew.Game.UiTokens.Font;
+using M = Unscrew.Game.UiTokens.Menu;
+using OB = Unscrew.Game.UiTokens.Onboarding;
+using P = Unscrew.Game.UiTokens.Popup;
+using R = Unscrew.Game.UiTokens.Radius;
+using S = Unscrew.Game.UiTokens.Space;
+using SH = Unscrew.Game.UiTokens.Shop;
+using TB = Unscrew.Game.UiTokens.TopBar;
+using Z = Unscrew.Game.UiTokens.Zone;
 
 namespace Unscrew.Game.Editor
 {
     /// <summary>
-    /// Generates the whole uGUI of Main.unity (menu, HUD, win/lose, shop, settings/pause, unlock popup, ad stub, toast)
-    /// from code: procedural sprites, TMP material presets, layout and references. Menu "Unscrew/Build UI".
-    /// Reference resolution 1080x1920 with "Expand" matching, so 9:16, 9:19.5 and 3:4 all fit; content sits in safe areas.
+    /// Generates the whole uGUI of Main.unity from the Claude Design mockups (Docs/Design/*.dc.html): menu, HUD (+drill
+    /// target mode), win, lose, shop, pause/settings, unlock popup, ad stub, toast, onboarding and the level curtain.
+    /// Every number comes from <see cref="UiTokens"/>; screens are laid out in a <see cref="UiFrame"/> (safe area + 48
+    /// inset, 1080-wide column) with anchors to its top or bottom. Menu "Unscrew/Build UI".
     /// </summary>
     public static class UiBuilder
     {
@@ -20,25 +33,9 @@ namespace Unscrew.Game.Editor
         private const string FontTtf = FontDir + "/Fredoka/Fredoka-SemiBold.ttf";
         private const string FontAssetPath = FontDir + "/Fredoka/Fredoka SDF.asset";
         /// <summary>Characters baked into the static atlas (everything the UI prints).</summary>
-        private const string FontChars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~×…—–’";
-
-        // Palette.
-        private static readonly Color Navy = Hex("2A3156");
-        private static readonly Color TextGrey = Hex("6A7391");
-        private static readonly Color Green = Hex("4CC85A");
-        private static readonly Color Orange = Hex("FF9B2F");
-        private static readonly Color Blue = Hex("3E9BFF");
-        private static readonly Color Red = Hex("FF5468");
-        private static readonly Color Purple = Hex("9A6BFF");
-        private static readonly Color Yellow = Hex("FFC83A");
-        private static readonly Color PanelBg = Hex("FFFFFF");
-        private static readonly Color SoftBg = Hex("EEF3FF");
-        private static readonly Color Dim = new Color(0.1f, 0.12f, 0.25f, 0.72f);
-        private static readonly Color ShadowCol = new Color(0.08f, 0.1f, 0.25f, 0.28f);
+        private const string FontChars = " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~×…—–’·";
 
         private static TMP_FontAsset _font;
-        private static Material _matShadow;
-        private static Material _matTitle;
 
         [MenuItem("Unscrew/Build UI")]
         public static void BuildMenu() => Debug.Log(RebuildInScene());
@@ -58,19 +55,25 @@ namespace Unscrew.Game.Editor
             return "UiBuilder: UI rebuilt in " + scene.path;
         }
 
-        public static UiRoot Build()
+        public static UiRoot Build() => Build(true);
+
+        /// <param name="rebuildSprites">false reuses the sprite PNGs already on disk (spec check builds the UI several times).</param>
+        public static UiRoot Build(bool rebuildSprites)
         {
-            UiSpriteFactory.BuildAll();
-            BuildFonts();
+            if (rebuildSprites) UiSpriteFactory.BuildAll();
+            _font = EnsureFontAsset();
 
             var go = new GameObject("UI", typeof(RectTransform));
             var canvas = go.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 10;
             var scaler = go.AddComponent<CanvasScaler>();
+            // Expand over 1080x1920 = UiLayout.ScaleFactorFor: the canvas is never narrower than 1080 nor shorter than 1920,
+            // so 9:19.5 gets extra height (model area) and 3:4 extra width (centered column) while every zone keeps its size.
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1080f, 1920f);
+            scaler.referenceResolution = new Vector2(UiTokens.RefWidth, UiTokens.RefHeight);
             scaler.screenMatchMode = CanvasScaler.ScreenMatchMode.Expand;
+            scaler.referencePixelsPerUnit = 100f;
             go.AddComponent<GraphicRaycaster>();
             var root = go.transform;
 
@@ -98,36 +101,42 @@ namespace Unscrew.Game.Editor
             Set(ui, "toast", toast);
             Set(ui, "curtain", curtain);
             Set(ui, "onboarding", onboarding);
-            SetArray(ui, "boosterIcons", new Object[] { S("booster_slot"), S("booster_drill"), S("booster_magnet") });
-            Set(ui, "coinSprite", S("coin"));
+            SetArray(ui, "boosterIcons", new Object[] { Spr("icon_hole"), Spr("icon_drill"), Spr("icon_magnet") });
+            Set(ui, "coinSprite", Spr("coin"));
+            Set(ui, "coinsSprite", Spr("coins"));
 
             foreach (var p in new Component[] { hud, menu, win, lose, shop, settings, unlock, ad, toast, curtain }) p.gameObject.SetActive(false);
             return ui;
         }
 
-        // ---------- fonts ----------
-
-        private static void BuildFonts()
-        {
-            if (!AssetDatabase.IsValidFolder(FontDir)) AssetDatabase.CreateFolder("Assets/_Game/UI", "Fonts");
-            _font = EnsureFontAsset();
-            // Chunky label: dilated face, thin dark outline and a soft drop shadow.
-            _matShadow = Preset("Label Shadow", 0.1f, 0.14f, new Color(0.05f, 0.07f, 0.2f, 0.35f), new Color(0.05f, 0.07f, 0.2f, 0.4f), -1.0f);
-            // Titles: thick navy outline and a hard shadow.
-            _matTitle = Preset("Title Outline", 0.16f, 0.28f, Navy, new Color(0.06f, 0.08f, 0.22f, 0.9f), -1.4f);
-        }
+        // ---------- font ----------
 
         /// <summary>
-        /// Fredoka SemiBold (OFL, google/fonts, instanced from the variable font at wght 600) as a static TMP SDF atlas.
-        /// Built once; delete the asset to rebuild. LiberationSans stays as a fallback for missing glyphs.
+        /// Fredoka SemiBold (OFL, google/fonts, instanced at wght 600) as a static TMP SDF atlas; 700 weights use TMP bold.
+        /// Built once; glyphs missing from <see cref="FontChars"/> are added to the existing atlas.
         /// </summary>
         private static TMP_FontAsset EnsureFontAsset()
         {
-            var existing = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
-            if (existing != null) return existing;
+            if (!AssetDatabase.IsValidFolder(FontDir)) AssetDatabase.CreateFolder("Assets/_Game/UI", "Fonts");
+            var fa = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(FontAssetPath);
+            if (fa != null)
+            {
+                if (!fa.HasCharacters(FontChars, out var missingChars) && missingChars != null && missingChars.Count > 0)
+                {
+                    var add = "";
+                    foreach (var ch in missingChars) add += ch;
+                    fa.atlasPopulationMode = AtlasPopulationMode.Dynamic;
+                    fa.TryAddCharacters(add, out _);
+                    fa.atlasPopulationMode = AtlasPopulationMode.Static;
+                    EditorUtility.SetDirty(fa);
+                    if (fa.atlasTextures != null && fa.atlasTextures.Length > 0) EditorUtility.SetDirty(fa.atlasTextures[0]);
+                    AssetDatabase.SaveAssets();
+                }
+                return fa;
+            }
             var ttf = AssetDatabase.LoadAssetAtPath<Font>(FontTtf);
             if (ttf == null) throw new FileNotFoundException("UiBuilder: font missing " + FontTtf);
-            var fa = TMP_FontAsset.CreateFontAsset(ttf, 72, 8, GlyphRenderMode.SDFAA, 1024, 1024, AtlasPopulationMode.Dynamic, false);
+            fa = TMP_FontAsset.CreateFontAsset(ttf, 72, 8, GlyphRenderMode.SDFAA, 1024, 1024, AtlasPopulationMode.Dynamic, false);
             fa.name = "Fredoka SDF";
             fa.TryAddCharacters(FontChars, out var missing);
             if (!string.IsNullOrEmpty(missing)) Debug.Log("UiBuilder: glyphs not in Fredoka: " + missing);
@@ -144,72 +153,62 @@ namespace Unscrew.Game.Editor
             return fa;
         }
 
-        private static Material Preset(string name, float dilate, float outline, Color outlineColor, Color underlay, float underlayY)
-        {
-            string path = $"{FontDir}/{name}.mat";
-            var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
-            if (mat == null)
-            {
-                mat = new Material(_font.material);
-                AssetDatabase.CreateAsset(mat, path);
-            }
-            mat.shader = _font.material.shader;
-            mat.CopyPropertiesFromMaterial(_font.material);
-            mat.name = name;
-            mat.SetFloat("_FaceDilate", dilate);
-            mat.SetFloat("_OutlineWidth", outline);
-            mat.SetColor("_OutlineColor", outlineColor);
-            mat.EnableKeyword("OUTLINE_ON");
-            mat.EnableKeyword("UNDERLAY_ON");
-            mat.SetColor("_UnderlayColor", underlay);
-            mat.SetFloat("_UnderlayOffsetX", 0f);
-            mat.SetFloat("_UnderlayOffsetY", underlayY);
-            mat.SetFloat("_UnderlayDilate", dilate + outline);
-            mat.SetFloat("_UnderlaySoftness", 0.15f);
-            EditorUtility.SetDirty(mat);
-            return mat;
-        }
-
-        // ---------- screens ----------
+        // ---------- HUD (Game.dc.html, Drill.dc.html) ----------
 
         private static HudScreen BuildHud(Transform root)
         {
-            var panel = Panel("Hud", root, false, out var safe);
+            var panel = Panel("Hud", root, false, out var frame);
             var hud = panel.gameObject.AddComponent<HudScreen>();
-            // The HUD never blocks the board except on its own widgets.
-            Group(panel).blocksRaycasts = true;
 
-            var pause = IconButton("PauseButton", safe, Blue, S("icon_pause"), 128f);
-            Place(pause.transform, new Vector2(0f, 1f), new Vector2(36f + 64f, -30f - 64f), new Vector2(128f, 128f));
+            // Zone guides: invisible rects of the gameplay zones (TrayView / LevelView compute the same ones via UiLayout).
+            var guides = Node("Guides", frame);
+            Stretch(guides);
+            for (int i = 0; i < 3; i++)
+                TopLeft(Node("Box" + i, guides), Z.Edge + i * (Z.BoxWidth + Z.BoxGap), Z.BoxesTop, Z.BoxWidth, Z.BoxHeight);
+            TopLeft(Node("HoleRow", guides), Z.Edge, Z.HolesTop, UiTokens.ContentWidth - 2f * Z.Edge, Z.HoleDiameter);
+            var model = Node("ModelArea", guides);
+            Stretch(model, Z.Edge, Z.ModelBottom, Z.Edge, Z.ModelTop);
 
-            var levelPill = Card("LevelPill", safe, PanelBg, 1f);
-            Place(levelPill, new Vector2(0.5f, 1f), new Vector2(-40f, -30f - 50f), new Vector2(270f, 100f));
-            var levelText = Txt("Text", levelPill, "Level 1", 58, Navy, null, TextAlignmentOptions.Center);
-            Stretch(levelText.rectTransform, 0f, 2f);
-            // HARD tag on the pill's corner (not below it: on 3:4 the box row starts right under the top bar).
-            var hard = Card("HardBadge", levelPill, Red, 0.7f);
-            Place(hard, new Vector2(1f, 1f), new Vector2(-6f, -2f), new Vector2(124f, 50f));
-            hard.localRotation = Quaternion.Euler(0f, 0f, -12f);
-            Stretch(Txt("Text", hard, "HARD", 30, Color.white, _matShadow, TextAlignmentOptions.Center).rectTransform, 0f, 2f);
+            // Drill target mode: dimmed model area + gold rings on drillable bolts (rings follow the bolts in screen space).
+            var drill = Node("DrillOverlay", frame);
+            Stretch(drill);
+            var dim = Shape("Dim", drill, R.L, C.DrillDim);
+            Stretch(dim.rectTransform, Z.Edge, Z.ModelBottom, Z.Edge, Z.ModelTop);
+            var rings = Node("DrillRings", drill);
+            Stretch(rings);
+            var ring = Img("Ring", rings, Spr("drill_ring"), Color.white);
+            Place(ring.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), Vector2.zero, Vector2.one * UiTokens.Drill.BoltRing);
 
-            var coins = CoinPill("Coins", safe, true);
-            Place(coins.transform, new Vector2(1f, 1f), new Vector2(-36f - 140f, -30f - 50f), new Vector2(280f, 100f));
+            // Top bar: pause, level pill (+HARD), coins with "+".
+            var top = TopBar(frame);
+            var pause = IconButton("PauseButton", top, Spr("icon_pause"), TB.PauseIcon);
+            Place(pause.transform, new Vector2(0f, 1f), new Vector2(0f, 1f), Vector2.zero, Vector2.one * B.IconButton);
+            var levelPill = Pill("LevelPill", top, C.Panel, C.NeutralEdge, B.PillEdge, TB.PillHeight, TB.PillPaddingLevel, TB.PillGapLevel, true);
+            // justify-content: space-between -> centered between the pause button and the coin pill.
+            float levelCenter = (B.IconButton + (UiTokens.ContentWidth - 2f * Z.Edge - TB.CoinPillWidth)) * 0.5f;
+            Place(levelPill, new Vector2(0f, 1f), new Vector2(0.5f, 1f), new Vector2(levelCenter, 0f), new Vector2(0f, TB.PillHeight));
+            var levelText = Txt("Text", levelPill, "Level 1", F.LevelPill, C.Ink);
+            var hard = Pill("HardBadge", levelPill, C.Danger, Color.clear, 0f, TB.HardTagHeight, TB.HardTagPadding, 0f, false);
+            Txt("Text", hard, "HARD", F.Caption, Color.white);
+            var coins = CoinPill("Coins", top, true);
+            Place(coins.transform, new Vector2(1f, 1f), new Vector2(1f, 1f), Vector2.zero, new Vector2(TB.CoinPillWidth, TB.PillHeight));
 
-            // Booster bar.
-            var bar = Card("BoosterBar", safe, new Color(1f, 1f, 1f, 0.55f), 1.6f);
-            Place(bar, new Vector2(0.5f, 0f), new Vector2(0f, 24f + 130f), new Vector2(860f, 260f));
+            // Booster panel.
+            var bar = Surface("BoosterPanel", frame, R.L, C.PanelTranslucent, C.NeutralEdge, BO.PanelEdge, out _, out _);
+            BottomLeft(bar, Z.Edge, 0f, UiTokens.ContentWidth - 2f * Z.Edge, Z.PanelHeight);
             var types = new[] { BoosterType.ExtraSlot, BoosterType.Drill, BoosterType.Magnet };
-            var faces = new[] { Hex("A9CDFF"), Hex("FFCB94"), Hex("FFB3BE") };
             var buttons = new BoosterButton[3];
+            float col = (UiTokens.ContentWidth - 2f * Z.Edge - 2f * BO.PanelPaddingSide - 2f * BO.ColumnGap) / 3f;
             for (int i = 0; i < 3; i++)
             {
-                buttons[i] = BoosterBtn(bar, types[i], faces[i]);
-                Place(buttons[i].transform, new Vector2(0.5f, 0.5f), new Vector2((i - 1) * 270f, 22f), new Vector2(180f, 180f));
+                float cx = BO.PanelPaddingSide + i * (col + BO.ColumnGap) + col * 0.5f;
+                buttons[i] = BoosterBtn(bar, types[i], cx, col);
             }
 
-            var hint = Card("DrillHint", safe, new Color(0.12f, 0.14f, 0.3f, 0.88f), 1f);
-            Place(hint, new Vector2(0.5f, 0f), new Vector2(0f, 330f), new Vector2(720f, 92f));
-            Stretch(Txt("Text", hint, "Tap a bolt to drill it", 42, Color.white, _matShadow, TextAlignmentOptions.Center).rectTransform);
+            // Drill tooltip: dark pill 16 design px above the panel.
+            var hint = Pill("DrillHint", frame, C.Ink, Color.clear, 0f, UiTokens.Drill.HintHeight, UiTokens.Drill.HintPadding, 0f, true);
+            Place(hint, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, Z.ModelBottom), new Vector2(0f, UiTokens.Drill.HintHeight));
+            Txt("Text", hint, "Tap a highlighted bolt to drill it", F.Tooltip, Color.white);
 
             Set(hud, "levelText", levelText);
             Set(hud, "hardBadge", hard.gameObject);
@@ -217,44 +216,47 @@ namespace Unscrew.Game.Editor
             Set(hud, "pauseButton", pause);
             SetArray(hud, "boosters", buttons);
             Set(hud, "drillHint", hint.gameObject);
+            Set(hud, "drillOverlay", drill.gameObject);
+            Set(hud, "ringLayer", rings);
+            Set(hud, "ringTemplate", ring);
             return hud;
         }
 
-        private static BoosterButton BoosterBtn(Transform parent, BoosterType type, Color face)
+        private static BoosterButton BoosterBtn(RectTransform panel, BoosterType type, float cx, float colWidth)
         {
-            var btn = ChunkyButton("Booster_" + type, parent, face, out var faceImg);
+            var btn = Btn("Booster_" + type, panel, R.Booster, BoosterInfo.Face(type), BoosterInfo.Edge(type), B.Edge, out var face, out var edge, out var content);
+            Place(btn.transform, new Vector2(0f, 1f), new Vector2(0.5f, 1f), new Vector2(cx, -BO.PanelPaddingTop), Vector2.one * BO.Size);
             var bb = btn.gameObject.AddComponent<BoosterButton>();
-            var icon = Img("Icon", btn.transform, S(IconName(type)), Color.white);
-            Place(icon.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, 6f), new Vector2(132f, 132f));
 
-            var lockGroup = new GameObject("Lock", typeof(RectTransform)).GetComponent<RectTransform>();
-            lockGroup.SetParent(btn.transform, false);
+            var ring = Shape("ActiveRing", btn.transform, R.Booster + BO.ActiveRing, C.Coin);
+            ring.sprite = Spr("ring_56");
+            Stretch(ring.rectTransform, -BO.ActiveRing, -BO.ActiveRing, -BO.ActiveRing, -BO.ActiveRing);
+            ring.transform.SetSiblingIndex(0);
+
+            var icon = Img("Icon", content, Spr(type == BoosterType.ExtraSlot ? "icon_hole" : type == BoosterType.Drill ? "icon_drill" : "icon_magnet"), BoosterInfo.Ink(type));
+            Place(icon.rectTransform, Center, Center, Vector2.zero, Vector2.one * BO.Icon);
+
+            var lockGroup = Node("Lock", content);
             Stretch(lockGroup);
-            var lockIcon = Img("LockIcon", lockGroup, S("icon_lock"), Hex("8C93AD"));
-            Place(lockIcon.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, 22f), new Vector2(84f, 84f));
-            var lockText = Txt("LockText", lockGroup, "Lv 3", 36, Hex("6E7590"), null, TextAlignmentOptions.Center);
-            Place(lockText.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -46f), new Vector2(170f, 50f));
+            var lv = VLayout(lockGroup.gameObject, 0, 0, 0, 0, BO.LockGap, TextAnchor.MiddleCenter);
+            lv.childControlWidth = lv.childControlHeight = true;
+            var lockIcon = Img("LockIcon", lockGroup, Spr("icon_lock"), C.Muted);
+            Size(lockIcon.gameObject, BO.LockIcon, BO.LockIcon);
+            var lockText = Txt("LockText", lockGroup, "Lv 7", F.Body, C.Muted);
 
-            var ring = Img("ActiveRing", btn.transform, S("frame"), Yellow);
-            ring.type = Image.Type.Sliced;
-            ring.pixelsPerUnitMultiplier = 0.9f;
-            Stretch(ring.rectTransform, -16f);
-
-            var count = Img("Count", btn.transform, S("circle"), Red);
-            Place(count.rectTransform, new Vector2(1f, 1f), new Vector2(-8f, -8f), new Vector2(68f, 68f));
-            var countText = Txt("Text", count.transform, "1", 40, Color.white, _matShadow, TextAlignmentOptions.Center);
+            var count = Badge("Count", content, C.Danger);
+            var countText = Txt("Text", count, "1", F.Caption, Color.white);
             Stretch(countText.rectTransform);
+            var plus = Badge("Plus", content, C.Success);
+            var plusIcon = Img("Icon", plus, Spr("icon_plus"), Color.white);
+            Place(plusIcon.rectTransform, Center, Center, Vector2.zero, Vector2.one * TB.PlusIcon * 0.75f);
 
-            var plus = Img("Plus", btn.transform, S("circle"), Green);
-            Place(plus.rectTransform, new Vector2(1f, 1f), new Vector2(-8f, -8f), new Vector2(68f, 68f));
-            var plusIcon = Img("Icon", plus.transform, S("icon_plus"), Color.white);
-            Place(plusIcon.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(40f, 40f));
-
-            var name = Txt("Name", btn.transform, BoosterInfo.Name(type), 34, Navy, null, TextAlignmentOptions.Center);
-            Place(name.rectTransform, new Vector2(0.5f, 0f), new Vector2(0f, -34f), new Vector2(240f, 48f));
+            var name = Txt("Name", panel, BoosterInfo.Name(type), F.Body, C.Ink);
+            Place(name.rectTransform, new Vector2(0f, 1f), new Vector2(0.5f, 1f), new Vector2(cx, -BO.PanelPaddingTop - BO.Size - BO.LabelGap), new Vector2(colWidth, BO.LabelHeight));
 
             Set(bb, "button", btn);
-            Set(bb, "face", faceImg);
+            Set(bb, "face", face);
+            Set(bb, "edge", edge);
             Set(bb, "icon", icon);
             Set(bb, "countBadge", count.gameObject);
             Set(bb, "countText", countText);
@@ -270,125 +272,157 @@ namespace Unscrew.Game.Editor
             return bb;
         }
 
+        /// <summary>Count badge: 28 design px circle with a 3px white ring, over the button's top-right corner.</summary>
+        private static RectTransform Badge(string name, Transform parent, Color color)
+        {
+            var rt = Node(name, parent);
+            float off = BO.BadgeOffset - BO.Badge * 0.5f;
+            Place(rt, Vector2.one, Center, new Vector2(off, off), Vector2.one * BO.Badge);
+            var ringImg = Shape("Ring", rt, R.Pill, C.Panel);
+            Stretch(ringImg.rectTransform, -BO.BadgeRing, -BO.BadgeRing, -BO.BadgeRing, -BO.BadgeRing);
+            var face = Shape("Face", rt, R.Pill, color);
+            Stretch(face.rectTransform);
+            return rt;
+        }
+
+        // ---------- menu (Menu.dc.html) ----------
+
         private static MenuScreen BuildMenuScreen(Transform root)
         {
-            var panel = Panel("Menu", root, false, out var safe);
+            var panel = Panel("Menu", root, false, out var frame);
             var menu = panel.gameObject.AddComponent<MenuScreen>();
 
-            // Soft scrims so the title and the buttons read over the spinning model.
-            var top = Img("TopScrim", panel, S("fade"), Hex("C8DCF2"));
-            top.transform.SetSiblingIndex(0);
-            Anchor(top.rectTransform, new Vector2(0f, 0.62f), Vector2.one, Vector2.zero, Vector2.zero);
-            var bottom = Img("BottomScrim", panel, S("fade"), Hex("B9CFEB"));
-            bottom.transform.SetSiblingIndex(1);
-            Anchor(bottom.rectTransform, Vector2.zero, new Vector2(1f, 0.36f), Vector2.zero, Vector2.zero);
-            bottom.rectTransform.localScale = new Vector3(1f, -1f, 1f);
-            top.raycastTarget = bottom.raycastTarget = false;
-            top.preserveAspect = bottom.preserveAspect = false;
+            var model = Node("ModelArea", frame);
+            Stretch(model, Z.Edge, Z.MenuModelBottom, Z.Edge, Z.MenuModelTop);
 
-            var settings = IconButton("SettingsButton", safe, Hex("8C7BFF"), S("icon_gear"), 128f);
-            Place(settings.transform, new Vector2(0f, 1f), new Vector2(36f + 64f, -30f - 64f), new Vector2(128f, 128f));
-            var coins = CoinPill("Coins", safe, true);
-            Place(coins.transform, new Vector2(1f, 1f), new Vector2(-36f - 140f, -30f - 50f), new Vector2(280f, 100f));
+            var top = TopBar(frame);
+            var settings = IconButton("SettingsButton", top, Spr("icon_gear"), TB.GearIcon);
+            Place(settings.transform, new Vector2(0f, 1f), new Vector2(0f, 1f), Vector2.zero, Vector2.one * B.IconButton);
+            var coins = CoinPill("Coins", top, true);
+            Place(coins.transform, Vector2.one, Vector2.one, Vector2.zero, new Vector2(TB.CoinPillWidth, TB.PillHeight));
 
-            var title = Txt("Title", safe, "UNSCREW", 150, Color.white, _matTitle, TextAlignmentOptions.Center);
-            Place(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -330f), new Vector2(1000f, 200f));
-            title.enableVertexGradient = true;
-            title.colorGradient = new VertexGradient(Hex("FFE36A"), Hex("FFE36A"), Hex("FF9A2E"), Hex("FF9A2E"));
-            title.characterSpacing = 4f;
-            var badge = Card("Badge3D", safe, Blue, 1f);
-            Place(badge, new Vector2(0.5f, 1f), new Vector2(330f, -440f), new Vector2(170f, 96f));
-            badge.localRotation = Quaternion.Euler(0f, 0f, 8f);
-            Stretch(Txt("Text", badge, "3D", 64, Color.white, _matShadow, TextAlignmentOptions.Center).rectTransform);
-            var sub = Txt("Subtitle", safe, "Unscrew every bolt!", 50, Navy, null, TextAlignmentOptions.Center);
-            Place(sub.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -510f), new Vector2(900f, 70f));
+            var logo = Node("Logo", frame);
+            Place(logo, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, -M.LogoTop), new Vector2(UiTokens.ContentWidth - 2f * Z.Edge, 0f));
+            VLayout(logo.gameObject, 0, 0, 0, 0, M.LogoGap, TextAnchor.UpperCenter).childForceExpandWidth = false;
+            Fit(logo, false, true);
+            var title = Txt("Title", logo, "UNSCREW", F.Logo, C.Ink, true);
+            title.characterSpacing = F.LogoSpacing / F.Logo * 100f;
+            Size(title.gameObject, -1f, F.Logo);
+            var tag = Pill("Tag", logo, C.Primary, Color.clear, 0f, M.LogoTagHeight, M.LogoTagPadding, 0f, false);
+            Txt("Text", tag, "3D puzzle", F.LogoTag, Color.white);
 
-            var play = ChunkyButton("PlayButton", safe, Green, out _);
-            Place(play.transform, new Vector2(0.5f, 0f), new Vector2(0f, 360f), new Vector2(660f, 210f));
-            var playIcon = Img("Icon", play.transform, S("icon_play"), Color.white);
-            Place(playIcon.rectTransform, new Vector2(0f, 0.5f), new Vector2(110f, 8f), new Vector2(100f, 100f));
-            var playLabel = Txt("Label", play.transform, "Level 1", 92, Color.white, _matShadow, TextAlignmentOptions.Center);
-            Place(playLabel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(50f, 10f), new Vector2(480f, 140f));
-            var hardTag = Card("HardTag", play.transform, Red, 0.7f);
-            Place(hardTag, new Vector2(1f, 1f), new Vector2(-40f, 0f), new Vector2(170f, 64f));
-            hardTag.localRotation = Quaternion.Euler(0f, 0f, -10f);
-            Stretch(Txt("Text", hardTag, "HARD", 40, Color.white, _matShadow, TextAlignmentOptions.Center).rectTransform);
+            float inner = UiTokens.ContentWidth - 2f * Z.Edge;
+            var shop = Btn("ShopButton", frame, R.Booster, C.Panel, C.NeutralEdge, B.Edge, out _, out _, out var shopContent);
+            BottomLeft((RectTransform)shop.transform, Z.Edge, 0f, M.ButtonHeight, M.ButtonHeight);
+            VLayout(shopContent.gameObject, 0, 0, 0, 0, S.X05, TextAnchor.MiddleCenter);
+            Size(Img("Icon", shopContent, Spr("icon_cart"), C.Primary).gameObject, M.ShopIcon, M.ShopIcon);
+            Txt("Label", shopContent, "Shop", F.Body, C.Ink);
 
-            var shop = ChunkyButton("ShopButton", safe, Yellow, out _);
-            Place(shop.transform, new Vector2(0.5f, 0f), new Vector2(0f, 150f), new Vector2(400f, 150f));
-            var shopIcon = Img("Icon", shop.transform, S("icon_bag"), Color.white);
-            Place(shopIcon.rectTransform, new Vector2(0f, 0.5f), new Vector2(90f, 6f), new Vector2(84f, 84f));
-            var shopLabel = Txt("Label", shop.transform, "Shop", 70, Color.white, _matShadow, TextAlignmentOptions.Center);
-            Place(shopLabel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(40f, 8f), new Vector2(240f, 100f));
+            var play = Btn("PlayButton", frame, R.Booster, C.Success, C.SuccessEdge, B.Edge, out _, out _, out var playContent);
+            BottomLeft((RectTransform)play.transform, Z.Edge + M.ButtonHeight + M.RowGap, 0f, inner - M.ButtonHeight - M.RowGap, M.ButtonHeight);
+            HLayout(playContent.gameObject, 0, 0, B.IconGapWide, TextAnchor.MiddleCenter);
+            Size(Img("Icon", playContent, Spr("icon_play"), Color.white).gameObject, M.PlayIcon, M.PlayIcon);
+            Txt("Label", playContent, "Play", F.Title, Color.white, true);
+
+            var levelPill = Pill("LevelPill", frame, C.Panel, C.NeutralEdge, B.PillEdge, M.LevelPillHeight, M.LevelPillPadding, TB.PillGapLevel, true);
+            Place(levelPill, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), new Vector2(0f, M.ButtonHeight + M.RowGap), new Vector2(0f, M.LevelPillHeight));
+            var levelText = Txt("Text", levelPill, "Level 1", F.Button, C.Ink);
+            var hard = Pill("HardTag", levelPill, C.Danger, Color.clear, 0f, TB.HardTagHeight, TB.HardTagPadding, 0f, false);
+            Txt("Text", hard, "HARD", F.Caption, Color.white);
 
             Set(menu, "playButton", play);
-            Set(menu, "playLabel", playLabel);
-            Set(menu, "hardTag", hardTag.gameObject);
+            Set(menu, "levelText", levelText);
+            Set(menu, "hardTag", hard.gameObject);
             Set(menu, "coins", coins);
             Set(menu, "shopButton", shop);
             Set(menu, "settingsButton", settings);
             return menu;
         }
 
+        // ---------- popups ----------
+
+        /// <summary>Popup card: inset 32 design px from the screen sides, padding 32, gap 24, radius 28, edge 8; top from the mockup.</summary>
+        private static RectTransform PopupCard(RectTransform frame, float topAboveCenter, bool alignCenter, out RectTransform window)
+        {
+            window = Node("Window", frame);
+            Stretch(window);
+            var card = Surface("Card", window, R.L, C.Panel, C.NeutralEdge, P.Edge, out var face, out _);
+            face.raycastTarget = true; // taps on the card never reach the scrim (which closes the settings popup)
+            Place(card, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 1f), new Vector2(0f, topAboveCenter), new Vector2(UiTokens.ContentWidth - 2f * P.Inset, 0f));
+            var v = VLayout(card.gameObject, P.Padding, P.Padding, P.Padding, P.Padding, P.Gap, TextAnchor.UpperCenter);
+            v.childForceExpandWidth = !alignCenter;
+            Fit(card, false, true);
+            return card;
+        }
+
+        private static RectTransform TitleBlock(Transform parent, string title, Color color, string body, out TextMeshProUGUI titleText, out TextMeshProUGUI bodyText)
+        {
+            var block = Node("TitleBlock", parent);
+            VLayout(block.gameObject, 0, 0, 0, 0, P.TextGap, TextAnchor.UpperCenter);
+            Size(block.gameObject, -1f, -1f, 1f);
+            titleText = Txt("Title", block, title, F.Display, color, true);
+            Size(titleText.gameObject, -1f, F.Display * F.TitleLineHeight);
+            bodyText = Txt("Body", block, body, F.Body, C.Muted);
+            bodyText.enableWordWrapping = true;
+            return block;
+        }
+
         private static WinScreen BuildWin(Transform root)
         {
-            var panel = Panel("Win", root, true, out var safe);
+            var panel = Panel("Win", root, true, out var frame);
             var win = panel.gameObject.AddComponent<WinScreen>();
-            var coins = CoinPill("Coins", safe, false);
-            Place(coins.transform, new Vector2(1f, 1f), new Vector2(-36f - 140f, -30f - 50f), new Vector2(280f, 100f));
+            var coins = HudCoinsOverScrim(frame);
 
-            var rays = Img("Rays", safe, S("rays"), new Color(1f, 0.92f, 0.55f, 0.75f));
-            Place(rays.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, 380f), new Vector2(1000f, 1000f));
-            rays.gameObject.AddComponent<Spin>();
-            var window = Window(safe, new Vector2(860f, 840f), new Vector2(0f, -40f));
+            var card = PopupCard(frame, P.WinTop, false, out var window);
+            Space(card, P.StarBig - P.StarsOverlap);
+            var starRow = Node("Stars", card);
+            Ignore(starRow);
+            float rowW = 2f * P.StarSmall + P.StarBig + 2f * P.StarGap;
+            Place(starRow, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, P.StarsOverlap - P.Padding), new Vector2(rowW, P.StarBig));
             var stars = new RectTransform[3];
+            float x = 0f;
             for (int i = 0; i < 3; i++)
             {
-                var star = Img("Star" + i, window, S("star"), Color.white);
-                float size = i == 1 ? 230f : 180f;
-                Place(star.rectTransform, new Vector2(0.5f, 1f), new Vector2((i - 1) * 210f, i == 1 ? 30f : -10f), new Vector2(size, size));
-                star.transform.localRotation = Quaternion.Euler(0f, 0f, (1 - i) * 14f);
+                float size = i == 1 ? P.StarBig : P.StarSmall;
+                var star = Img("Star" + i, starRow, Spr("star"), Color.white);
+                Place(star.rectTransform, Vector2.zero, Center, new Vector2(x + size * 0.5f, size * 0.5f), Vector2.one * size);
                 stars[i] = star.rectTransform;
+                x += size + P.StarGap;
             }
-            var level = Txt("Level", window, "Level 1", 56, TextGrey, null, TextAlignmentOptions.Center);
-            Place(level.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -180f), new Vector2(700f, 70f));
-            var title = Txt("Title", window, "Complete!", 120, Color.white, _matTitle, TextAlignmentOptions.Center);
-            Place(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -290f), new Vector2(800f, 150f));
-            title.enableVertexGradient = true;
-            title.colorGradient = new VertexGradient(Hex("A6F07A"), Hex("A6F07A"), Hex("3DBB4E"), Hex("3DBB4E"));
+            TitleBlock(card, "Level complete!", C.Ink, "Level 1", out _, out var level);
 
-            var rewardBox = Card("Reward", window, Hex("FFF4D6"), 1f);
-            Place(rewardBox, new Vector2(0.5f, 1f), new Vector2(0f, -480f), new Vector2(520f, 170f));
-            var rewardIcon = Img("CoinIcon", rewardBox, S("coin"), Color.white);
-            Place(rewardIcon.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(-120f, 0f), new Vector2(120f, 120f));
-            var reward = Txt("Amount", rewardBox, "+20", 96, Orange, _matShadow, TextAlignmentOptions.Left);
-            Place(reward.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(90f, 4f), new Vector2(260f, 130f));
+            var rewardRow = Node("RewardRow", card);
+            HLayout(rewardRow.gameObject, 0, 0, 0, TextAnchor.MiddleCenter);
+            Size(rewardRow.gameObject, -1f, P.RewardHeight);
+            var reward = Pill("Reward", rewardRow, C.RewardBg, Color.clear, 0f, P.RewardHeight, B.Padding, B.IconGapWide, false);
+            var rewardIcon = Img("CoinIcon", reward, Spr("coin"), Color.white);
+            Size(rewardIcon.gameObject, P.RewardCoin, P.RewardCoin);
+            var amount = Txt("Amount", reward, "+20", F.Reward, C.Ink, true);
 
-            var next = ChunkyButton("NextButton", window, Green, out _);
-            Place(next.transform, new Vector2(0.5f, 0f), new Vector2(0f, 140f), new Vector2(560f, 170f));
-            Stretch(Txt("Label", next.transform, "Next", 88, Color.white, _matShadow, TextAlignmentOptions.Center).rectTransform, 0f, 10f);
+            var next = Btn("NextButton", card, R.M, C.Success, C.SuccessEdge, B.Edge, out _, out _, out var nextContent);
+            Size(next.gameObject, -1f, B.Height);
+            HLayout(nextContent.gameObject, 0, 0, B.IconGap, TextAnchor.MiddleCenter);
+            Txt("Label", nextContent, "Next level", F.Button, Color.white);
+            Size(Img("Arrow", nextContent, Spr("icon_arrow"), Color.white).gameObject, B.Icon, B.Icon);
 
-            var fly = new GameObject("FlyLayer", typeof(RectTransform)).GetComponent<RectTransform>();
-            fly.SetParent(panel, false);
+            var fly = Node("FlyLayer", panel);
             Stretch(fly);
-            var coinTemplate = Img("FlyingCoin", fly, S("coin"), Color.white);
-            Place(coinTemplate.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(96f, 96f));
-            coinTemplate.raycastTarget = false;
+            var coinTemplate = Img("FlyingCoin", fly, Spr("coin"), Color.white);
+            Place(coinTemplate.rectTransform, Center, Center, Vector2.zero, Vector2.one * P.RewardCoin);
 
-            var confettiLayer = new GameObject("Confetti", typeof(RectTransform)).GetComponent<RectTransform>();
-            confettiLayer.SetParent(panel, false);
+            var confettiLayer = Node("Confetti", panel);
             Stretch(confettiLayer);
-            var piece = Img("Piece", confettiLayer, S("confetti"), Color.white);
+            var piece = Img("Piece", confettiLayer, Spr("confetti"), Color.white);
             piece.preserveAspect = false;
-            Place(piece.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(24f, 38f));
+            Place(piece.rectTransform, Center, Center, Vector2.zero, new Vector2(S.X15, S.Edge));
             var confetti = confettiLayer.gameObject.AddComponent<UiConfetti>();
             Set(confetti, "template", piece);
+
             SetArray(win, "stars", stars);
             Set(win, "confetti", confetti);
-
             Set(win, "window", window);
             Set(win, "levelText", level);
-            Set(win, "rewardText", reward);
+            Set(win, "rewardText", amount);
             Set(win, "rewardIcon", rewardIcon.rectTransform);
             Set(win, "coins", coins);
             Set(win, "nextButton", next);
@@ -397,47 +431,55 @@ namespace Unscrew.Game.Editor
             return win;
         }
 
+        /// <summary>Coin pill at the HUD position, above the scrim (coins fly into it on win; "+" opens the shop on lose).</summary>
+        private static CoinCounter HudCoinsOverScrim(RectTransform frame)
+        {
+            var top = TopBar(frame);
+            var coins = CoinPill("Coins", top, true);
+            Place(coins.transform, Vector2.one, Vector2.one, Vector2.zero, new Vector2(TB.CoinPillWidth, TB.PillHeight));
+            return coins;
+        }
+
         private static LoseScreen BuildLose(Transform root)
         {
-            var panel = Panel("Lose", root, true, out var safe);
+            var panel = Panel("Lose", root, true, out var frame);
             var lose = panel.gameObject.AddComponent<LoseScreen>();
-            var coins = CoinPill("Coins", safe, true);
-            Place(coins.transform, new Vector2(1f, 1f), new Vector2(-36f - 140f, -30f - 50f), new Vector2(280f, 100f));
+            var coins = HudCoinsOverScrim(frame);
 
-            var window = Window(safe, new Vector2(880f, 1060f), new Vector2(0f, -40f));
-            var icon = Img("Icon", window, S("booster_slot"), Color.white);
-            Place(icon.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, 20f), new Vector2(220f, 220f));
-            var title = Txt("Title", window, "Out of moves!", 108, Color.white, _matTitle, TextAlignmentOptions.Center);
-            Place(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -200f), new Vector2(840f, 140f));
-            title.enableVertexGradient = true;
-            title.colorGradient = new VertexGradient(Hex("FF9AA6"), Hex("FF9AA6"), Hex("F0405A"), Hex("F0405A"));
-            var msg = Txt("Message", window, "No bolt can move.", 44, TextGrey, null, TextAlignmentOptions.Center);
-            msg.enableWordWrapping = true;
-            Place(msg.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -320f), new Vector2(720f, 120f));
+            var card = PopupCard(frame, P.LoseTop, false, out var window);
+            Space(card, P.LoseBadge - P.LoseBadgeOverlap);
+            var badge = Surface("Badge", card, R.Pill, C.Panel, C.NeutralEdge, P.LoseBadgeEdge, out _, out _);
+            Ignore(badge);
+            Place(badge, new Vector2(0.5f, 1f), new Vector2(0.5f, 1f), new Vector2(0f, P.LoseBadgeOverlap - P.Padding), Vector2.one * P.LoseBadge);
+            var badgeIcon = Img("Icon", badge, Spr("icon_stuck"), Color.white);
+            Place(badgeIcon.rectTransform, Center, Center, Vector2.zero, Vector2.one * P.LoseBadgeIcon);
 
-            var extra = ChunkyButton("ExtraSlotButton", window, Blue, out _);
-            Place(extra.transform, new Vector2(0.5f, 1f), new Vector2(0f, -490f), new Vector2(660f, 160f));
-            var extraIcon = Img("Icon", extra.transform, S("booster_slot"), Color.white);
-            Place(extraIcon.rectTransform, new Vector2(0f, 0.5f), new Vector2(90f, 8f), new Vector2(110f, 110f));
-            var extraLabel = Txt("Label", extra.transform, "+1 Hole", 70, Color.white, _matShadow, TextAlignmentOptions.Center);
-            Place(extraLabel.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(20f, 10f), new Vector2(360f, 110f));
-            var extraCount = Txt("Count", extra.transform, "x1", 46, Color.white, _matShadow, TextAlignmentOptions.Right);
-            Place(extraCount.rectTransform, new Vector2(1f, 0.5f), new Vector2(-90f, 10f), new Vector2(120f, 80f));
+            TitleBlock(card, "Out of moves!", C.Danger, "No bolt can go to a box or a hole.\nAdd a hole to keep going.", out _, out var msg);
+            msg.alignment = TextAlignmentOptions.Top;
 
-            var cont = ChunkyButton("ContinueButton", window, Green, out var contFace);
-            Place(cont.transform, new Vector2(0.5f, 1f), new Vector2(0f, -680f), new Vector2(660f, 160f));
-            var contLabel = Txt("Label", cont.transform, "Continue", 66, Color.white, _matShadow, TextAlignmentOptions.Left);
-            Place(contLabel.rectTransform, new Vector2(0f, 0.5f), new Vector2(60f + 160f, 10f), new Vector2(320f, 110f));
-            var contCoin = Img("Coin", cont.transform, S("coin"), Color.white);
-            Place(contCoin.rectTransform, new Vector2(1f, 0.5f), new Vector2(-200f, 10f), new Vector2(76f, 76f));
-            var price = Txt("Price", cont.transform, "100", 66, Color.white, _matShadow, TextAlignmentOptions.Left);
-            Place(price.rectTransform, new Vector2(1f, 0.5f), new Vector2(-90f, 10f), new Vector2(140f, 100f));
-            var noCoins = Txt("NotEnoughCoins", window, "Not enough coins - tap to get more", 34, Red, null, TextAlignmentOptions.Center);
-            Place(noCoins.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -800f), new Vector2(760f, 50f));
+            var stack = Node("Buttons", card);
+            VLayout(stack.gameObject, 0, 0, 0, 0, P.StackGap, TextAnchor.UpperCenter);
 
-            var restart = ChunkyButton("RestartButton", window, Orange, out _);
-            Place(restart.transform, new Vector2(0.5f, 1f), new Vector2(0f, -910f), new Vector2(520f, 140f));
-            Stretch(Txt("Label", restart.transform, "Restart", 62, Color.white, _matShadow, TextAlignmentOptions.Center).rectTransform, 0f, 10f);
+            var extra = Btn("ExtraSlotButton", stack, R.M, C.Primary, C.PrimaryEdge, B.Edge, out _, out _, out var extraContent);
+            Size(extra.gameObject, -1f, B.Height);
+            HLayout(extraContent.gameObject, B.Padding, B.Padding, B.IconGapWide, TextAnchor.MiddleLeft);
+            Size(Img("Icon", extraContent, Spr("icon_hole_white"), Color.white).gameObject, P.LoseButtonIcon, P.LoseButtonIcon);
+            Txt("Label", extraContent, "Use +1 Hole", F.Button, Color.white);
+            Flex(extraContent);
+            var chip = Pill("Chip", extraContent, C.ChipLight, Color.clear, 0f, P.ChipSmallHeight, P.ChipPadding, 0f, false);
+            var extraCount = Txt("Count", chip, "×1", F.Chip, Color.white);
+
+            var cont = Btn("ContinueButton", stack, R.M, C.Success, C.SuccessEdge, B.Edge, out var contFace, out var contEdge, out var contContent);
+            Size(cont.gameObject, -1f, B.Height);
+            HLayout(contContent.gameObject, B.Padding, B.Padding, B.IconGapWide, TextAnchor.MiddleLeft);
+            var contLabel = Txt("Label", contContent, "Continue", F.Button, Color.white);
+            Flex(contContent);
+            var priceChip = Pill("Chip", contContent, C.ChipDark, Color.clear, 0f, P.ChipHeight, P.ChipPadding, B.IconGap, false);
+            priceChip.GetComponent<HorizontalLayoutGroup>().padding.left = Mathf.RoundToInt(P.ChipPaddingIcon);
+            Size(Img("Coin", priceChip, Spr("coin"), Color.white).gameObject, P.ChipCoin, P.ChipCoin);
+            var price = Txt("Price", priceChip, "100", F.Button, Color.white);
+
+            var restart = LinkButton("RestartButton", stack, "Restart level");
 
             Set(lose, "window", window);
             Set(lose, "messageText", msg);
@@ -446,43 +488,172 @@ namespace Unscrew.Game.Editor
             Set(lose, "extraSlotCount", extraCount);
             Set(lose, "continueButton", cont);
             Set(lose, "continueFace", contFace);
+            Set(lose, "continueEdge", contEdge);
+            Set(lose, "continueLabel", contLabel);
             Set(lose, "continuePrice", price);
-            Set(lose, "notEnoughCoins", noCoins.gameObject);
             Set(lose, "restartButton", restart);
             return lose;
         }
 
+        private static SettingsPopup BuildSettings(Transform root)
+        {
+            var panel = Panel("Settings", root, true, out var frame);
+            var popup = panel.gameObject.AddComponent<SettingsPopup>();
+            var scrimButton = panel.Find("Scrim").gameObject.AddComponent<Button>();
+            scrimButton.transition = Selectable.Transition.None;
+
+            var card = PopupCard(frame, P.PauseTop, false, out var window);
+            var title = Txt("Title", card, "Paused", F.Display, C.Ink, true);
+            Size(title.gameObject, -1f, F.Display * F.TitleLineHeight);
+
+            var rows = Node("Rows", card);
+            VLayout(rows.gameObject, 0, 0, 0, 0, P.RowGap, TextAnchor.UpperCenter);
+            var sound = SwitchRow(rows, "Sound", Spr("icon_sound"));
+            var vib = SwitchRow(rows, "Vibration", Spr("icon_vibration"));
+
+            var buttons = Node("Buttons", card);
+            VLayout(buttons.gameObject, 0, 0, 0, 0, P.StackGap, TextAnchor.UpperCenter);
+            var resume = Btn("ResumeButton", buttons, R.M, C.Success, C.SuccessEdge, B.Edge, out _, out _, out var resumeContent);
+            Size(resume.gameObject, -1f, B.Height);
+            HLayout(resumeContent.gameObject, 0, 0, B.IconGapWide, TextAnchor.MiddleCenter);
+            var resumeLabel = Txt("Label", resumeContent, "Resume", F.Button, Color.white);
+
+            var games = Node("GameButtons", buttons);
+            var gh = HLayout(games.gameObject, 0, 0, P.StackGap, TextAnchor.MiddleCenter);
+            gh.childForceExpandWidth = true;
+            gh.childForceExpandHeight = true;
+            Size(games.gameObject, -1f, B.Height);
+            var restart = Btn("RestartButton", games, R.M, C.Warn, C.WarnEdge, B.Edge, out _, out _, out var restartContent);
+            HLayout(restartContent.gameObject, 0, 0, B.IconGapWide, TextAnchor.MiddleCenter);
+            Size(Img("Icon", restartContent, Spr("icon_restart"), Color.white).gameObject, B.Icon, B.Icon);
+            Txt("Label", restartContent, "Restart", F.Button, Color.white);
+            var home = Btn("HomeButton", games, R.M, C.Border, C.NeutralEdge, B.Edge, out var homeFace, out _, out var homeContent);
+            var homeFill = Shape("Fill", homeFace.transform, R.M - B.SecondaryBorder, C.Panel);
+            Stretch(homeFill.rectTransform, B.SecondaryBorder, B.SecondaryBorder, B.SecondaryBorder, B.SecondaryBorder);
+            HLayout(homeContent.gameObject, 0, 0, B.IconGapWide, TextAnchor.MiddleCenter);
+            Size(Img("Icon", homeContent, Spr("icon_home"), C.Ink).gameObject, B.Icon, B.Icon);
+            Txt("Label", homeContent, "Home", F.Button, C.Ink);
+
+            Set(popup, "window", window);
+            Set(popup, "title", title);
+            Set(popup, "sound", sound);
+            Set(popup, "vibration", vib);
+            Set(popup, "closeButton", scrimButton);
+            Set(popup, "gameButtons", games.gameObject);
+            Set(popup, "resumeButton", resume);
+            Set(popup, "resumeLabel", resumeLabel);
+            Set(popup, "restartButton", restart);
+            Set(popup, "homeButton", home);
+            return popup;
+        }
+
+        private static ToggleSwitch SwitchRow(Transform parent, string label, Sprite icon)
+        {
+            var row = Shape(label + "Row", parent, R.M, C.Row);
+            Size(row.gameObject, -1f, P.RowHeight);
+            HLayout(row.gameObject, P.RowPadding, P.RowPadding, P.RowGap, TextAnchor.MiddleLeft);
+            Size(Img("Icon", row.transform, icon, C.Primary).gameObject, P.RowIcon, P.RowIcon);
+            var text = Txt("Label", row.transform, label, F.Row, C.Ink, false, TextAlignmentOptions.Left);
+            Size(text.gameObject, -1f, -1f, 1f);
+
+            var track = Shape("Switch", row.transform, R.Pill, C.Success);
+            track.raycastTarget = true;
+            Size(track.gameObject, P.SwitchWidth, P.SwitchHeight);
+            var btn = track.gameObject.AddComponent<Button>();
+            btn.transition = Selectable.Transition.None;
+            btn.targetGraphic = track;
+            var knob = Node("Knob", track.transform);
+            Place(knob, Center, Center, Vector2.zero, Vector2.one * P.Knob);
+            var shadow = Shape("Shadow", knob, R.Pill, new Color(0f, 0f, 0f, 0.2f));
+            Stretch(shadow.rectTransform, 0f, -B.PillEdge * 0.5f, 0f, B.PillEdge * 0.5f);
+            Stretch(Shape("Face", knob, R.Pill, C.Panel).rectTransform);
+            var ts = track.gameObject.AddComponent<ToggleSwitch>();
+            Set(ts, "button", btn);
+            Set(ts, "track", track);
+            Set(ts, "knob", knob);
+            var so = new SerializedObject(ts);
+            so.FindProperty("knobTravel").floatValue = (P.SwitchWidth - P.Knob) * 0.5f - P.KnobInset;
+            so.FindProperty("onColor").colorValue = C.Success;
+            so.FindProperty("offColor").colorValue = C.SwitchOff;
+            so.ApplyModifiedPropertiesWithoutUndo();
+            return ts;
+        }
+
+        private static UnlockPopup BuildUnlock(Transform root)
+        {
+            var panel = Panel("Unlock", root, true, out var frame);
+            var popup = panel.gameObject.AddComponent<UnlockPopup>();
+            var card = PopupCard(frame, P.UnlockTop, true, out var window);
+
+            var tag = Pill("Tag", card, C.Primary, Color.clear, 0f, P.TagHeight, P.TagPadding, 0f, false);
+            Txt("Text", tag, "New booster", F.Body, Color.white);
+            var tile = Surface("Tile", card, R.UnlockTile, C.DrillFace, C.DrillEdge, P.Edge, out var tileFace, out var tileEdge);
+            Size(tile.gameObject, P.UnlockTile, P.UnlockTile);
+            var icon = Img("Icon", tile, Spr("icon_drill"), C.DrillInk);
+            Place(icon.rectTransform, Center, Center, Vector2.zero, Vector2.one * P.UnlockIcon);
+            TitleBlock(card, "Drill", C.Ink, BoosterInfo.HowTo(BoosterType.Drill), out var name, out var desc);
+            var gift = Pill("Gift", card, C.GiftBg, Color.clear, 0f, P.GiftHeight, P.TagPadding, 0f, false);
+            var giftText = Txt("Text", gift, "+1 free", F.Chip, C.SuccessEdge);
+            var ok = Btn("OkButton", card, R.M, C.Success, C.SuccessEdge, B.Edge, out _, out _, out var okContent);
+            Size(ok.gameObject, -1f, B.Height, 1f);
+            HLayout(okContent.gameObject, 0, 0, B.IconGap, TextAnchor.MiddleCenter);
+            Txt("Label", okContent, "Got it", F.Button, Color.white);
+
+            Set(popup, "window", window);
+            Set(popup, "tile", tileFace);
+            Set(popup, "tileEdge", tileEdge);
+            Set(popup, "icon", icon);
+            Set(popup, "nameText", name);
+            Set(popup, "descText", desc);
+            Set(popup, "giftText", giftText);
+            Set(popup, "okButton", ok);
+            return popup;
+        }
+
+        // ---------- shop (Shop.dc.html) ----------
+
         private static ShopScreen BuildShop(Transform root)
         {
-            var panel = Panel("Shop", root, false, out var safe);
+            var panel = Panel("Shop", root, false, out var frame);
             var bg = panel.gameObject.AddComponent<Image>();
-            bg.sprite = null;
-            bg.color = SoftBg;
+            bg.color = C.Bg;
             var shop = panel.gameObject.AddComponent<ShopScreen>();
 
-            var coins = CoinPill("Coins", safe, false);
-            Place(coins.transform, new Vector2(0f, 1f), new Vector2(36f + 40f + 140f, -30f - 50f), new Vector2(280f, 100f));
-            var close = IconButton("CloseButton", safe, Red, S("icon_close"), 120f);
-            Place(close.transform, new Vector2(1f, 1f), new Vector2(-36f - 60f, -30f - 60f), new Vector2(120f, 120f));
-            var title = Txt("Title", safe, "Shop", 120, Color.white, _matTitle, TextAlignmentOptions.Center);
-            Place(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -210f), new Vector2(600f, 150f));
-            title.enableVertexGradient = true;
-            title.colorGradient = new VertexGradient(Hex("FFE36A"), Hex("FFE36A"), Hex("FF9A2E"), Hex("FF9A2E"));
+            var top = TopBar(frame);
+            var back = IconButton("BackButton", top, Spr("icon_back"), TB.BackIcon);
+            Place(back.transform, new Vector2(0f, 1f), new Vector2(0f, 1f), Vector2.zero, Vector2.one * B.IconButton);
+            var title = Txt("Title", top, "Shop", F.Title, C.Ink, true);
+            Place(title.rectTransform, new Vector2(0f, 0.5f), Center, new Vector2(SH.TitleCenterX - Z.Edge, 0f), new Vector2(UiTokens.ContentWidth * 0.5f, TB.PillHeight));
+            var coins = CoinPill("Coins", top, false);
+            Place(coins.transform, Vector2.one, Vector2.one, Vector2.zero, new Vector2(TB.CoinPillWidthNoPlus, TB.PillHeight));
 
-            var content = new GameObject("Content", typeof(RectTransform)).GetComponent<RectTransform>();
-            content.SetParent(safe, false);
-            Anchor(content, new Vector2(0f, 0f), new Vector2(1f, 1f), new Vector2(40f, 40f), new Vector2(-40f, -310f));
-            var vlg = content.gameObject.AddComponent<VerticalLayoutGroup>();
-            vlg.spacing = 34f;
-            vlg.childAlignment = TextAnchor.UpperCenter;
-            vlg.childControlWidth = true;
-            vlg.childControlHeight = true;
-            vlg.childForceExpandWidth = true;
-            vlg.childForceExpandHeight = false;
-            vlg.padding = new RectOffset(0, 0, 10, 10);
+            // Grid in a scroll view that ends above the toast spot (the toast never covers a card).
+            var viewport = Node("Viewport", frame);
+            Stretch(viewport, Z.Edge, UiTokens.Toast.Height + SH.ToastGap, Z.Edge, SH.GridTop);
+            viewport.gameObject.AddComponent<RectMask2D>();
+            var hit = viewport.gameObject.AddComponent<Image>();
+            hit.color = Color.clear;
+            var content = Node("Content", viewport);
+            Place(content, new Vector2(0f, 1f), new Vector2(0f, 1f), Vector2.zero, Vector2.zero);
+            content.anchorMax = Vector2.one;
+            content.sizeDelta = Vector2.zero;
+            var grid = content.gameObject.AddComponent<GridLayoutGroup>();
+            float cell = (UiTokens.ContentWidth - 2f * Z.Edge - SH.CardGap) * 0.5f;
+            grid.cellSize = new Vector2(cell, SH.CardHeight);
+            grid.spacing = new Vector2(SH.CardGap, SH.CardGap);
+            grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
+            grid.constraintCount = 2;
+            grid.padding = new RectOffset(0, 0, 0, Mathf.RoundToInt(SH.CardEdge + S.X05));
+            Fit(content, false, true);
+            var scroll = viewport.gameObject.AddComponent<ScrollRect>();
+            scroll.content = content;
+            scroll.viewport = viewport;
+            scroll.horizontal = false;
+            scroll.movementType = ScrollRect.MovementType.Elastic;
+            scroll.scrollSensitivity = S.X3;
 
             var card = BuildShopCard(content);
-            Set(shop, "closeButton", close);
+            Set(shop, "closeButton", back);
             Set(shop, "coins", coins);
             Set(shop, "content", content);
             Set(shop, "cardTemplate", card);
@@ -491,228 +662,85 @@ namespace Unscrew.Game.Editor
 
         private static ShopCard BuildShopCard(Transform parent)
         {
-            var root = Card("CardTemplate", parent, PanelBg, 1f);
-            var le = root.gameObject.AddComponent<LayoutElement>();
-            le.preferredHeight = 330f;
-            le.minHeight = 300f;
+            var root = Surface("CardTemplate", parent, R.L, C.Panel, C.NeutralEdge, SH.CardEdge, out _, out _);
             var card = root.gameObject.AddComponent<ShopCard>();
+            var v = VLayout(root.gameObject, SH.CardPaddingSide, SH.CardPaddingSide, SH.CardPaddingTop, SH.CardPaddingBottom, SH.CardGapInner, TextAnchor.UpperCenter);
+            v.childForceExpandWidth = false;
 
-            var tile = Img("IconTile", root, S("panel"), Hex("E3EDFF"));
-            tile.type = Image.Type.Sliced;
-            Anchor(tile.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(34f, -120f), new Vector2(274f, 120f));
-            var icon = Img("Icon", tile.transform, S("booster_drill"), Color.white);
-            Place(icon.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(190f, 190f));
+            var tile = Shape("Tile", root, R.Booster, C.SlotFace);
+            Size(tile.gameObject, SH.Tile, SH.Tile);
+            var icon = Img("Icon", tile.transform, Spr("icon_hole"), Color.white);
+            Place(icon.rectTransform, Center, Center, Vector2.zero, Vector2.one * SH.TileIcon);
+            var lockBadge = Node("LockBadge", tile.transform);
+            float off = SH.LockBadgeOffset - SH.LockBadge * 0.5f;
+            Place(lockBadge, new Vector2(1f, 0f), Center, new Vector2(off, -off), Vector2.one * SH.LockBadge);
+            Stretch(Shape("Ring", lockBadge, R.Pill, C.Panel).rectTransform, -BO.BadgeRing, -BO.BadgeRing, -BO.BadgeRing, -BO.BadgeRing);
+            Stretch(Shape("Face", lockBadge, R.Pill, C.Muted).rectTransform);
+            var lockIcon = Img("Icon", lockBadge, Spr("icon_lock"), Color.white);
+            Place(lockIcon.rectTransform, Center, Center, Vector2.zero, Vector2.one * SH.LockBadgeIcon);
 
-            var title = Txt("Title", root, "Drill", 60, Navy, null, TextAlignmentOptions.TopLeft);
-            Anchor(title.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(310f, -100f), new Vector2(-30f, -26f));
-            var desc = Txt("Description", root, "Removes any bolt", 36, TextGrey, null, TextAlignmentOptions.TopLeft);
+            var title = Txt("Title", root, "+1 Hole", F.Button, C.Ink);
+            var desc = Txt("Description", root, "One more buffer hole for this level", F.ShopDesc, C.Muted, false, TextAlignmentOptions.Top);
             desc.enableWordWrapping = true;
-            Anchor(desc.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(310f, -160f), new Vector2(-30f, -100f));
-            var owned = Txt("Owned", root, "Owned: 0", 34, Blue, null, TextAlignmentOptions.BottomLeft);
-            Anchor(owned.rectTransform, new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(310f, 30f), new Vector2(560f, 80f));
+            desc.lineSpacing = (F.ShopDescLineHeight - 1.2f) * 100f;
+            Size(desc.gameObject, -1f, -1f, 1f, 1f);
 
-            var buttons = new ShopBuyButton[2];
-            for (int i = 0; i < 2; i++)
-            {
-                buttons[i] = BuyButton(root, i == 0 ? Green : Hex("2FB5A8"));
-                Place(buttons[i].transform, new Vector2(1f, 0f), new Vector2(-30f - 105f - (1 - i) * 230f, 30f + 66f), new Vector2(210f, 132f));
-            }
-
-            var lockGroup = Card("Locked", root, Hex("E4E8F2"), 0.8f);
-            Anchor(lockGroup, new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-470f, 30f), new Vector2(-30f, 130f));
-            var lockIcon = Img("LockIcon", lockGroup, S("icon_lock"), Hex("8C93AD"));
-            Place(lockIcon.rectTransform, new Vector2(0f, 0.5f), new Vector2(60f, 0f), new Vector2(64f, 64f));
-            var lockText = Txt("Text", lockGroup, "Unlocks at level 5", 34, Hex("6E7590"), null, TextAlignmentOptions.Center);
-            Anchor(lockText.rectTransform, Vector2.zero, Vector2.one, new Vector2(90f, 0f), new Vector2(-10f, 0f));
-
-            Set(card, "icon", icon);
-            Set(card, "title", title);
-            Set(card, "description", desc);
-            Set(card, "ownedText", owned);
-            SetArray(card, "buttons", buttons);
-            Set(card, "lockGroup", lockGroup.gameObject);
-            Set(card, "lockText", lockText);
-            return card;
-        }
-
-        private static ShopBuyButton BuyButton(Transform parent, Color color)
-        {
-            var btn = ChunkyButton("Buy", parent, color, out var face);
-            var bb = btn.gameObject.AddComponent<ShopBuyButton>();
-            var amount = Txt("Amount", btn.transform, "x1", 40, Color.white, _matShadow, TextAlignmentOptions.Center);
-            Place(amount.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -32f), new Vector2(200f, 50f));
-            var row = new GameObject("PriceRow", typeof(RectTransform)).GetComponent<RectTransform>();
-            row.SetParent(btn.transform, false);
-            Place(row, new Vector2(0.5f, 0f), new Vector2(0f, 46f), new Vector2(200f, 56f));
-            var h = row.gameObject.AddComponent<HorizontalLayoutGroup>();
-            h.childAlignment = TextAnchor.MiddleCenter;
-            h.spacing = 6f;
-            h.childControlWidth = true;
-            h.childControlHeight = true;
-            h.childForceExpandWidth = false;
-            h.childForceExpandHeight = false;
-            var coin = Img("Coin", row, S("coin"), Color.white);
-            Size(coin.gameObject, 46f, 46f);
-            var ad = Img("Ad", row, S("icon_video"), Color.white);
-            Size(ad.gameObject, 50f, 50f);
-            var price = Txt("Price", row, "120", 44, Color.white, _matShadow, TextAlignmentOptions.Center);
-            price.enableAutoSizing = true;
-            price.fontSizeMin = 28f;
-            price.fontSizeMax = 44f;
-            Size(price.gameObject, -1f, 56f);
-            Set(bb, "button", btn);
+            var buy = Btn("Buy", root, R.M, C.Success, C.SuccessEdge, B.Edge, out var face, out var edge, out var buyContent);
+            Size(buy.gameObject, -1f, SH.BuyHeight, 1f);
+            HLayout(buyContent.gameObject, 0, 0, B.IconGap, TextAnchor.MiddleCenter);
+            var coin = Img("Coin", buyContent, Spr("coin"), Color.white);
+            Size(coin.gameObject, SH.BuyCoin, SH.BuyCoin);
+            var ad = Img("Play", buyContent, Spr("icon_play"), Color.white);
+            Size(ad.gameObject, SH.BuyPlayIcon, SH.BuyPlayIcon);
+            var price = Txt("Price", buyContent, "90", F.Button, Color.white);
+            var bb = buy.gameObject.AddComponent<ShopBuyButton>();
+            Set(bb, "button", buy);
             Set(bb, "face", face);
-            Set(bb, "amountText", amount);
+            Set(bb, "edge", edge);
             Set(bb, "priceText", price);
             Set(bb, "coinIcon", coin.gameObject);
             Set(bb, "adIcon", ad.gameObject);
-            return bb;
+
+            var locked = Shape("Locked", root, R.M, C.Locked);
+            Size(locked.gameObject, -1f, SH.BuyHeight, 1f);
+            var lockText = Txt("Text", locked.transform, "Unlocks at level 7", SH.LockedText, C.Muted);
+            Stretch(lockText.rectTransform);
+
+            Set(card, "tile", tile);
+            Set(card, "icon", icon);
+            Set(card, "title", title);
+            Set(card, "description", desc);
+            Set(card, "buyButton", bb);
+            Set(card, "lockGroup", locked.gameObject);
+            Set(card, "lockText", lockText);
+            Set(card, "lockBadge", lockBadge.gameObject);
+            locked.gameObject.SetActive(false);
+            lockBadge.gameObject.SetActive(false);
+            return card;
         }
 
-        private static SettingsPopup BuildSettings(Transform root)
-        {
-            var panel = Panel("Settings", root, true, out var safe);
-            var popup = panel.gameObject.AddComponent<SettingsPopup>();
-
-            var window = Window(safe, new Vector2(800f, 600f), Vector2.zero);
-            var fitter = window.gameObject.AddComponent<ContentSizeFitter>();
-            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
-            var v = window.gameObject.AddComponent<VerticalLayoutGroup>();
-            v.padding = new RectOffset(60, 60, 50, 70);
-            v.spacing = 28f;
-            v.childAlignment = TextAnchor.UpperCenter;
-            v.childControlWidth = true;
-            v.childControlHeight = true;
-            v.childForceExpandWidth = true;
-            v.childForceExpandHeight = false;
-
-            var title = Txt("Title", window, "Settings", 100, Color.white, _matTitle, TextAlignmentOptions.Center);
-            Size(title.gameObject, -1f, 130f);
-            title.enableVertexGradient = true;
-            title.colorGradient = new VertexGradient(Hex("BFE3FF"), Hex("BFE3FF"), Hex("4C9BFF"), Hex("4C9BFF"));
-
-            var sound = ToggleRow(window, "Sound");
-            var vib = ToggleRow(window, "Vibration");
-
-            var games = new GameObject("GameButtons", typeof(RectTransform)).GetComponent<RectTransform>();
-            games.SetParent(window, false);
-            var gv = games.gameObject.AddComponent<VerticalLayoutGroup>();
-            gv.spacing = 26f;
-            gv.padding = new RectOffset(0, 0, 20, 0);
-            gv.childAlignment = TextAnchor.UpperCenter;
-            gv.childControlWidth = true;
-            gv.childControlHeight = true;
-            gv.childForceExpandWidth = false;
-            gv.childForceExpandHeight = false;
-            var resume = LabeledButton("ResumeButton", games, Green, "Resume", 60);
-            var restart = LabeledButton("RestartButton", games, Orange, "Restart", 60);
-            var home = LabeledButton("HomeButton", games, Blue, "Home", 60);
-
-            var close = IconButton("CloseButton", window, Red, S("icon_close"), 110f);
-            close.gameObject.AddComponent<LayoutElement>().ignoreLayout = true;
-            Place(close.transform, new Vector2(1f, 1f), new Vector2(-20f, -20f), new Vector2(110f, 110f));
-
-            Set(popup, "window", window);
-            Set(popup, "title", title);
-            Set(popup, "sound", sound);
-            Set(popup, "vibration", vib);
-            Set(popup, "closeButton", close);
-            Set(popup, "gameButtons", games.gameObject);
-            Set(popup, "resumeButton", resume);
-            Set(popup, "restartButton", restart);
-            Set(popup, "homeButton", home);
-            return popup;
-        }
-
-        private static ToggleSwitch ToggleRow(Transform parent, string label)
-        {
-            var row = Card(label + "Row", parent, Hex("F1F5FF"), 1f);
-            Size(row.gameObject, -1f, 120f);
-            var text = Txt("Label", row, label, 54, Navy, null, TextAlignmentOptions.Left);
-            Anchor(text.rectTransform, Vector2.zero, Vector2.one, new Vector2(40f, 0f), new Vector2(-200f, 0f));
-
-            var go = new GameObject("Switch", typeof(RectTransform));
-            go.transform.SetParent(row, false);
-            Place((RectTransform)go.transform, new Vector2(1f, 0.5f), new Vector2(-40f - 80f, 0f), new Vector2(160f, 76f));
-            var track = go.AddComponent<Image>();
-            track.sprite = S("circle");
-            track.type = Image.Type.Sliced;
-            track.color = Green;
-            var btn = go.AddComponent<Button>();
-            btn.targetGraphic = track;
-            var knob = Img("Knob", go.transform, S("circle"), Color.white);
-            Place(knob.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(42f, 0f), new Vector2(64f, 64f));
-            var sh = knob.gameObject.AddComponent<Shadow>();
-            sh.effectColor = new Color(0f, 0f, 0f, 0.2f);
-            sh.effectDistance = new Vector2(0f, -3f);
-            var ts = go.AddComponent<ToggleSwitch>();
-            Set(ts, "button", btn);
-            Set(ts, "track", track);
-            Set(ts, "knob", knob.rectTransform);
-            var so = new SerializedObject(ts);
-            so.FindProperty("knobTravel").floatValue = 42f;
-            so.FindProperty("onColor").colorValue = Green;
-            so.ApplyModifiedPropertiesWithoutUndo();
-            return ts;
-        }
-
-        private static UnlockPopup BuildUnlock(Transform root)
-        {
-            var panel = Panel("Unlock", root, true, out var safe);
-            var popup = panel.gameObject.AddComponent<UnlockPopup>();
-            var rays = Img("Rays", safe, S("rays"), new Color(1f, 0.9f, 0.5f, 0.7f));
-            Place(rays.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, 340f), new Vector2(1100f, 1100f));
-            rays.raycastTarget = false;
-            rays.gameObject.AddComponent<Spin>();
-
-            var window = Window(safe, new Vector2(820f, 960f), new Vector2(0f, -60f));
-            var title = Txt("Title", window, "New booster!", 100, Color.white, _matTitle, TextAlignmentOptions.Center);
-            Place(title.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -100f), new Vector2(800f, 140f));
-            title.enableVertexGradient = true;
-            title.colorGradient = new VertexGradient(Hex("FFE36A"), Hex("FFE36A"), Hex("FF9A2E"), Hex("FF9A2E"));
-            var tile = Card("IconTile", window, Hex("E3EDFF"), 1f);
-            Place(tile, new Vector2(0.5f, 1f), new Vector2(0f, -330f), new Vector2(260f, 260f));
-            var icon = Img("Icon", tile, S("booster_drill"), Color.white);
-            Place(icon.rectTransform, new Vector2(0.5f, 0.5f), Vector2.zero, new Vector2(220f, 220f));
-            var name = Txt("Name", window, "Drill", 72, Navy, null, TextAlignmentOptions.Center);
-            Place(name.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -520f), new Vector2(760f, 90f));
-            var desc = Txt("Description", window, "Removes any bolt", 42, TextGrey, null, TextAlignmentOptions.Center);
-            desc.enableWordWrapping = true;
-            Place(desc.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -600f), new Vector2(700f, 70f));
-            var gift = Txt("Gift", window, "+1 free!", 56, Green, _matShadow, TextAlignmentOptions.Center);
-            Place(gift.rectTransform, new Vector2(0.5f, 1f), new Vector2(0f, -675f), new Vector2(600f, 70f));
-            var ok = LabeledButton("OkButton", window, Green, "Great!", 76);
-            Place(ok.transform, new Vector2(0.5f, 0f), new Vector2(0f, 130f), new Vector2(520f, 160f));
-
-            Set(popup, "window", window);
-            Set(popup, "icon", icon);
-            Set(popup, "nameText", name);
-            Set(popup, "descText", desc);
-            Set(popup, "giftText", gift);
-            Set(popup, "okButton", ok);
-            return popup;
-        }
+        // ---------- overlays ----------
 
         private static AdOverlay BuildAd(Transform root)
         {
-            var panel = Panel("AdOverlay", root, false, out var safe);
+            var panel = Panel("AdOverlay", root, false, out var frame);
             var bg = panel.gameObject.AddComponent<Image>();
-            bg.color = new Color(0.05f, 0.06f, 0.12f, 0.96f);
+            bg.color = new Color(C.Ink.r, C.Ink.g, C.Ink.b, 0.96f);
             var ad = panel.gameObject.AddComponent<AdOverlay>();
-            var icon = Img("Icon", safe, S("icon_video"), Color.white);
-            Place(icon.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, 160f), new Vector2(220f, 220f));
-            var label = Txt("Label", safe, "Ad is playing...", 60, Color.white, _matShadow, TextAlignmentOptions.Center);
-            Place(label.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -10f), new Vector2(900f, 90f));
-            var note = Txt("Note", safe, "Rewarded video placeholder", 36, new Color(1f, 1f, 1f, 0.55f), null, TextAlignmentOptions.Center);
-            Place(note.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -200f), new Vector2(900f, 60f));
-            var track = Img("Track", safe, S("circle"), new Color(1f, 1f, 1f, 0.15f));
-            track.type = Image.Type.Sliced;
-            Place(track.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -110f), new Vector2(700f, 40f));
-            var fill = Img("Fill", track.transform, S("panel"), Yellow);
+            var box = Node("Content", frame);
+            Place(box, Center, Center, Vector2.zero, new Vector2(UiTokens.ContentWidth - 2f * P.Inset, 0f));
+            VLayout(box.gameObject, 0, 0, 0, 0, P.Gap, TextAnchor.MiddleCenter).childForceExpandWidth = false;
+            Fit(box, false, true);
+            Size(Img("Icon", box, Spr("icon_play"), C.Coin).gameObject, P.LoseBadgeIcon, P.LoseBadgeIcon);
+            var label = Txt("Label", box, "Ad is playing...", F.Button, Color.white);
+            var track = Shape("Track", box, R.Pill, new Color(1f, 1f, 1f, 0.15f));
+            Size(track.gameObject, UiTokens.ContentWidth - 4f * P.Inset, S.X2);
+            var fill = Shape("Fill", track.transform, R.Pill, C.Coin);
             fill.type = Image.Type.Filled;
             fill.fillMethod = Image.FillMethod.Horizontal;
             fill.fillAmount = 0f;
-            Stretch(fill.rectTransform, 4f);
+            Stretch(fill.rectTransform);
+            Txt("Note", box, "Rewarded video placeholder", F.Body, new Color(1f, 1f, 1f, 0.55f));
             Set(ad, "progressFill", fill);
             Set(ad, "label", label);
             return ad;
@@ -720,28 +748,14 @@ namespace Unscrew.Game.Editor
 
         private static Toast BuildToast(Transform root)
         {
-            var go = new GameObject("Toast", typeof(RectTransform));
-            go.transform.SetParent(root, false);
-            var rt = (RectTransform)go.transform;
-            Place(rt, new Vector2(0.5f, 0.215f), Vector2.zero, new Vector2(760f, 110f));
-            go.AddComponent<CanvasGroup>();
-            var img = go.AddComponent<Image>();
-            img.sprite = S("circle");
-            img.type = Image.Type.Sliced;
-            img.color = new Color(0.13f, 0.16f, 0.33f, 1f);
-            img.raycastTarget = false;
-            var tsh = go.AddComponent<Shadow>();
-            tsh.effectColor = ShadowCol;
-            tsh.effectDistance = new Vector2(0f, -8f);
-            var h = go.AddComponent<HorizontalLayoutGroup>();
-            h.padding = new RectOffset(56, 56, 22, 22);
-            h.childAlignment = TextAnchor.MiddleCenter;
-            h.childControlWidth = true;
-            h.childControlHeight = true;
-            var fit = go.AddComponent<ContentSizeFitter>();
-            fit.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
-            var text = Txt("Text", go.transform, "Not enough coins", 46, Color.white, _matShadow, TextAlignmentOptions.Center);
-            var toast = go.AddComponent<Toast>();
+            var layer = Node("ToastLayer", root);
+            Stretch(layer);
+            var frame = Frame(layer);
+            var pill = Pill("Toast", frame, C.Ink, Color.clear, 0f, UiTokens.Toast.Height, UiTokens.Toast.Padding, 0f, true);
+            Place(pill, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), Vector2.zero, new Vector2(0f, UiTokens.Toast.Height));
+            pill.gameObject.AddComponent<CanvasGroup>();
+            var text = Txt("Text", pill, "Not enough coins", F.Tooltip, Color.white);
+            var toast = pill.gameObject.AddComponent<Toast>();
             Set(toast, "label", text);
             return toast;
         }
@@ -749,37 +763,31 @@ namespace Unscrew.Game.Editor
         /// <summary>Level intro / loading transition on its own canvas (above every panel).</summary>
         private static TransitionCurtain BuildCurtain(Transform root)
         {
-            var go = new GameObject("Curtain", typeof(RectTransform));
-            go.transform.SetParent(root, false);
-            var rt = (RectTransform)go.transform;
+            var rt = Node("Curtain", root);
             Stretch(rt);
-            var canvas = go.AddComponent<Canvas>();
+            var canvas = rt.gameObject.AddComponent<Canvas>();
             canvas.overrideSorting = true;
             canvas.sortingOrder = 60;
-            go.AddComponent<GraphicRaycaster>();
-            go.AddComponent<CanvasGroup>();
-            var bg = Img("Background", rt, S("bg_gradient"), Color.white);
-            bg.preserveAspect = false;
+            rt.gameObject.AddComponent<GraphicRaycaster>();
+            rt.gameObject.AddComponent<CanvasGroup>();
+            var bg = rt.gameObject.AddComponent<Image>();
+            bg.color = C.Bg;
             bg.raycastTarget = true;
-            Stretch(bg.rectTransform);
 
-            var content = new GameObject("Content", typeof(RectTransform)).GetComponent<RectTransform>();
-            content.SetParent(rt, false);
-            Place(content, new Vector2(0.5f, 0.5f), new Vector2(0f, 60f), new Vector2(900f, 500f));
-            var bolt = Img("Bolt", content, S("bolt_icon"), Color.white);
-            Place(bolt.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, 150f), new Vector2(170f, 170f));
+            var content = Node("Content", rt);
+            Place(content, Center, Center, Vector2.zero, new Vector2(UiTokens.ContentWidth, 0f));
+            VLayout(content.gameObject, 0, 0, 0, 0, P.Gap, TextAnchor.MiddleCenter).childForceExpandWidth = false;
+            Fit(content, false, true);
+            var bolt = Img("Bolt", content, Spr("bolt_icon"), Color.white);
+            Size(bolt.gameObject, P.LoseBadge * 0.75f, P.LoseBadge * 0.75f);
             var spin = new SerializedObject(bolt.gameObject.AddComponent<Spin>());
             spin.FindProperty("degreesPerSecond").floatValue = -240f;
             spin.ApplyModifiedPropertiesWithoutUndo();
-            var title = Txt("Title", content, "Level 1", 140, Color.white, _matTitle, TextAlignmentOptions.Center);
-            Place(title.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, -40f), new Vector2(900f, 180f));
-            title.enableVertexGradient = true;
-            title.colorGradient = new VertexGradient(Hex("FFE36A"), Hex("FFE36A"), Hex("FF9A2E"), Hex("FF9A2E"));
-            var hard = Card("Hard", content, Red, 0.7f);
-            Place(hard, new Vector2(0.5f, 0.5f), new Vector2(0f, -170f), new Vector2(240f, 84f));
-            Stretch(Txt("Text", hard, "HARD", 54, Color.white, _matShadow, TextAlignmentOptions.Center).rectTransform, 0f, 3f);
+            var title = Txt("Title", content, "Level 1", F.Curtain, C.Ink, true);
+            var hard = Pill("Hard", content, C.Danger, Color.clear, 0f, P.TagHeight, P.TagPadding, 0f, false);
+            Txt("Text", hard, "HARD", F.Body, Color.white);
 
-            var curtain = go.AddComponent<TransitionCurtain>();
+            var curtain = rt.gameObject.AddComponent<TransitionCurtain>();
             Set(curtain, "title", title);
             Set(curtain, "hardBadge", hard.gameObject);
             Set(curtain, "content", content);
@@ -789,165 +797,190 @@ namespace Unscrew.Game.Editor
         /// <summary>Tutorial hand + speech bubble (never blocks input), above the HUD.</summary>
         private static Onboarding BuildOnboarding(Transform root)
         {
-            var go = new GameObject("Onboarding", typeof(RectTransform));
-            go.transform.SetParent(root, false);
-            var rt = (RectTransform)go.transform;
+            var rt = Node("Onboarding", root);
             Stretch(rt);
-            var canvas = go.AddComponent<Canvas>();
+            var canvas = rt.gameObject.AddComponent<Canvas>();
             canvas.overrideSorting = true;
             canvas.sortingOrder = 15;
-            var group = go.AddComponent<CanvasGroup>();
+            var group = rt.gameObject.AddComponent<CanvasGroup>();
             group.blocksRaycasts = false;
             group.interactable = false;
+            var frame = Frame(rt);
 
-            var bubble = Card("Bubble", rt, PanelBg, 0.8f);
-            Place(bubble, new Vector2(0.5f, 0f), new Vector2(0f, 400f), new Vector2(700f, 132f));
-            var text = Txt("Text", bubble, "Tap a bolt to unscrew it!", 42, Navy, null, TextAlignmentOptions.Center);
+            var bubble = Surface("Bubble", frame, OB.BubbleRadius, C.Panel, C.NeutralEdge, B.PillEdge, out _, out _);
+            Place(bubble, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), Vector2.zero, new Vector2(OB.BubbleWidth, TB.PillHeight + S.X3));
+            var text = Txt("Text", bubble, "Tap a bolt to unscrew it!", F.Tooltip, C.Ink);
             text.enableWordWrapping = true;
-            Stretch(text.rectTransform, 24f, 2f);
-            var arrow = Img("Arrow", bubble, S("arrow_down"), PanelBg);
+            Stretch(text.rectTransform, OB.BubblePaddingX, OB.BubblePaddingY, OB.BubblePaddingX, OB.BubblePaddingY);
+            var arrow = Img("Arrow", bubble, Spr("arrow_down"), C.Panel);
             arrow.preserveAspect = false;
-            Place(arrow.rectTransform, new Vector2(0.5f, 0f), new Vector2(0f, -16f), new Vector2(56f, 34f));
+            Place(arrow.rectTransform, new Vector2(0.5f, 0f), new Vector2(0.5f, 1f), new Vector2(0f, S.X05), new Vector2(OB.ArrowWidth, OB.ArrowHeight));
 
-            var hand = Img("Hand", rt, S("hand"), Color.white);
-            hand.rectTransform.anchorMin = hand.rectTransform.anchorMax = new Vector2(0.5f, 0.5f);
+            var hand = Img("Hand", rt, Spr("hand"), Color.white);
+            hand.rectTransform.anchorMin = hand.rectTransform.anchorMax = Center;
             hand.rectTransform.pivot = new Vector2(70f / 160f, 194f / 200f);
-            hand.rectTransform.sizeDelta = new Vector2(124f, 155f);
+            hand.rectTransform.sizeDelta = new Vector2(OB.Hand * 0.8f, OB.Hand);
 
-            var ob = go.AddComponent<Onboarding>();
-            Set(ob, "hand", hand.rectTransform);
-            Set(ob, "bubble", bubble);
-            Set(ob, "bubbleText", text);
-            Set(ob, "bubbleArrow", arrow.rectTransform);
-            Set(ob, "group", group);
-            return ob;
+            var o = rt.gameObject.AddComponent<Onboarding>();
+            Set(o, "hand", hand.rectTransform);
+            Set(o, "bubble", bubble);
+            Set(o, "bubbleText", text);
+            Set(o, "bubbleArrow", arrow.rectTransform);
+            Set(o, "group", group);
+            return o;
         }
 
         // ---------- widgets ----------
 
-        /// <summary>Full-screen panel root (CanvasGroup) with optional dim, and a SafeArea child for content.</summary>
-        private static RectTransform Panel(string name, Transform parent, bool dim, out RectTransform safe)
+        private static readonly Vector2 Center = new Vector2(0.5f, 0.5f);
+
+        /// <summary>Full-screen panel (CanvasGroup) with an optional scrim and a <see cref="UiFrame"/> for the content.</summary>
+        private static RectTransform Panel(string name, Transform parent, bool scrim, out RectTransform frame)
         {
-            var rt = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
-            rt.SetParent(parent, false);
+            var rt = Node(name, parent);
             Stretch(rt);
             rt.gameObject.AddComponent<CanvasGroup>();
-            if (dim)
+            if (scrim)
             {
-                var d = Img("Dim", rt, null, Dim);
+                var d = Img("Scrim", rt, null, C.Scrim);
+                d.raycastTarget = true;
                 Stretch(d.rectTransform);
             }
-            safe = new GameObject("SafeArea", typeof(RectTransform)).GetComponent<RectTransform>();
-            safe.SetParent(rt, false);
-            Stretch(safe);
-            safe.gameObject.AddComponent<SafeAreaFitter>();
+            frame = Frame(rt);
             return rt;
         }
 
-        private static CanvasGroup Group(RectTransform rt) => rt.GetComponent<CanvasGroup>();
-
-        /// <summary>White rounded window with a soft shadow, centered.</summary>
-        private static RectTransform Window(Transform parent, Vector2 size, Vector2 offset)
+        private static RectTransform Frame(Transform parent)
         {
-            var w = Card("Window", parent, PanelBg, 0.7f);
-            Place(w, new Vector2(0.5f, 0.5f), offset, size);
-            return w;
+            var frame = Node("Frame", parent);
+            frame.gameObject.AddComponent<UiFrame>().Apply(UiLayout.Override ?? UiLayout.ForResolution((int)UiTokens.RefWidth, (int)UiTokens.RefHeight));
+            return frame;
         }
 
-        /// <summary>Rounded panel: a "Shadow" sibling-like child drawn first, the face is the root Image.</summary>
-        private static RectTransform Card(string name, Transform parent, Color color, float cornerScale)
+        /// <summary>Top bar row: 24-80 design px, screen edge 20.</summary>
+        private static RectTransform TopBar(RectTransform frame)
         {
-            var rt = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
-            rt.SetParent(parent, false);
-            var face = rt.gameObject.AddComponent<Image>();
-            face.sprite = S("panel");
-            face.type = Image.Type.Sliced;
-            face.pixelsPerUnitMultiplier = cornerScale;
-            face.color = color;
-            if (color.a > 0.5f)
+            var top = Node("TopBar", frame);
+            TopLeft(top, Z.Edge, Z.TopBarTop, UiTokens.ContentWidth - 2f * Z.Edge, Z.TopBarHeight);
+            return top;
+        }
+
+        /// <summary>Surface: face over a darker edge layer shifted down by <paramref name="edgeHeight"/> (CSS box-shadow 0 Npx 0).</summary>
+        private static RectTransform Surface(string name, Transform parent, float radius, Color face, Color edge, float edgeHeight, out Image faceImg, out Image edgeImg)
+        {
+            var rt = Node(name, parent);
+            edgeImg = null;
+            if (edgeHeight > 0f)
             {
-                var sh = rt.gameObject.AddComponent<Shadow>();
-                sh.effectColor = ShadowCol;
-                sh.effectDistance = new Vector2(0f, -10f);
+                edgeImg = Shape("Edge", rt, radius, edge);
+                Stretch(edgeImg.rectTransform, 0f, -edgeHeight, 0f, edgeHeight);
+                Ignore(edgeImg.rectTransform);
             }
+            faceImg = Shape("Face", rt, radius, face);
+            Stretch(faceImg.rectTransform);
+            Ignore(faceImg.rectTransform);
             return rt;
         }
 
-        /// <summary>Saturated button with a darker lip (button sprite), drop shadow and press-scale feel.</summary>
-        private static Button ChunkyButton(string name, Transform parent, Color color, out Image face)
+        /// <summary>Spec button: Surface + Button + press feel; labels go into <paramref name="content"/> (moves with the face).</summary>
+        private static Button Btn(string name, Transform parent, float radius, Color face, Color edge, float edgeHeight, out Image faceImg, out Image edgeImg, out RectTransform content)
         {
-            var go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            face = go.AddComponent<Image>();
-            face.sprite = S("button");
-            face.type = Image.Type.Sliced;
-            face.pixelsPerUnitMultiplier = 0.9f;
-            face.color = color;
-            var sh = go.AddComponent<Shadow>();
-            sh.effectColor = ShadowCol;
-            sh.effectDistance = new Vector2(0f, -8f);
-            var btn = go.AddComponent<Button>();
-            btn.targetGraphic = face;
-            var colors = btn.colors;
-            colors.pressedColor = new Color(0.9f, 0.9f, 0.9f);
-            colors.highlightedColor = Color.white;
-            colors.selectedColor = Color.white;
-            colors.fadeDuration = 0.05f;
-            btn.colors = colors;
+            var rt = Surface(name, parent, radius, face, edge, edgeHeight, out faceImg, out edgeImg);
+            faceImg.raycastTarget = true;
+            content = Node("Content", rt);
+            Stretch(content);
+            Ignore(content);
+            var btn = rt.gameObject.AddComponent<Button>();
+            btn.targetGraphic = faceImg;
+            btn.transition = Selectable.Transition.None;
             var nav = btn.navigation;
             nav.mode = Navigation.Mode.None;
             btn.navigation = nav;
-            go.AddComponent<PressScale>();
+            var press = rt.gameObject.AddComponent<PressScale>();
+            Set(press, "face", faceImg.rectTransform);
+            Set(press, "content", content);
             return btn;
         }
 
-        private static Button LabeledButton(string name, Transform parent, Color color, string label, float size)
+        private static Button IconButton(string name, Transform parent, Sprite icon, float iconSize)
         {
-            var b = ChunkyButton(name, parent, color, out _);
-            Size(b.gameObject, 560f, 140f);
-            Stretch(Txt("Label", b.transform, label, size, Color.white, _matShadow, TextAlignmentOptions.Center).rectTransform, 0f, 10f);
+            var b = Btn(name, parent, R.M, C.Primary, C.PrimaryEdge, B.Edge, out _, out _, out var content);
+            var i = Img("Icon", content, icon, Color.white);
+            Place(i.rectTransform, Center, Center, Vector2.zero, Vector2.one * iconSize);
             return b;
         }
 
-        private static Button IconButton(string name, Transform parent, Color color, Sprite icon, float size)
+        /// <summary>Tertiary link button: transparent, underlined label.</summary>
+        private static Button LinkButton(string name, Transform parent, string label)
         {
-            var b = ChunkyButton(name, parent, color, out _);
-            var i = Img("Icon", b.transform, icon, Color.white);
-            Place(i.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, size * 0.04f), new Vector2(size * 0.56f, size * 0.56f));
-            return b;
+            var rt = Node(name, parent);
+            Size(rt.gameObject, -1f, B.LinkHeight);
+            var hit = rt.gameObject.AddComponent<Image>();
+            hit.color = Color.clear;
+            var content = Node("Content", rt);
+            Stretch(content);
+            var t = Txt("Label", content, label, F.Link, C.Ink);
+            t.fontStyle = FontStyles.Underline;
+            Stretch(t.rectTransform);
+            var btn = rt.gameObject.AddComponent<Button>();
+            btn.targetGraphic = hit;
+            btn.transition = Selectable.Transition.None;
+            var press = rt.gameObject.AddComponent<PressScale>();
+            Set(press, "content", content);
+            return btn;
         }
 
+        /// <summary>Pill (radius 999) sized by its content: horizontal padding, gap; optional edge layer.</summary>
+        private static RectTransform Pill(string name, Transform parent, Color face, Color edge, float edgeHeight, float height, float padding, float gap, bool fitWidth)
+        {
+            var rt = Surface(name, parent, R.Pill, face, edge, edgeHeight, out _, out _);
+            rt.sizeDelta = new Vector2(0f, height);
+            HLayout(rt.gameObject, padding, padding, gap, TextAnchor.MiddleCenter);
+            if (fitWidth) Fit(rt, true, false);
+            Size(rt.gameObject, -1f, height);
+            return rt;
+        }
+
+        /// <summary>Coin pill of the top bar: coin 36, number (min-width 48, right-aligned), optional green "+" (design px).</summary>
         private static CoinCounter CoinPill(string name, Transform parent, bool plus)
         {
-            var pill = Card(name, parent, PanelBg, 1.3f);
+            var pill = Surface(name, parent, R.Pill, C.Panel, C.NeutralEdge, B.PillEdge, out _, out _);
             var counter = pill.gameObject.AddComponent<CoinCounter>();
-            var icon = Img("CoinIcon", pill, S("coin"), Color.white);
-            Place(icon.rectTransform, new Vector2(0f, 0.5f), new Vector2(20f, 2f), new Vector2(104f, 104f));
-            var text = Txt("Amount", pill, "100", 56, Navy, null, TextAlignmentOptions.Center);
-            Anchor(text.rectTransform, Vector2.zero, Vector2.one, new Vector2(70f, 0f), new Vector2(plus ? -90f : -16f, 0f));
+            float x = TB.PillPaddingCoins;
+            var icon = Img("CoinIcon", pill, Spr("coin"), Color.white);
+            Place(icon.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(x, 0f), Vector2.one * TB.CoinIcon);
+            x += TB.CoinIcon + S.X1;
+            var text = Txt("Amount", pill, "100", F.Coins, C.Ink, false, TextAlignmentOptions.Right);
+            text.enableAutoSizing = true;
+            text.fontSizeMax = F.Coins;
+            text.fontSizeMin = F.Caption;
+            Place(text.rectTransform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(x, 0f), new Vector2(TB.CoinNumberWidth, TB.PillHeight));
+            x += TB.CoinNumberWidth + S.X1;
             Set(counter, "label", text);
             Set(counter, "icon", icon.rectTransform);
             if (plus)
             {
-                var p = ChunkyButton("Plus", pill, Green, out _);
-                Place(p.transform, new Vector2(1f, 0.5f), new Vector2(-50f, 0f), new Vector2(76f, 76f));
-                var pi = Img("Icon", p.transform, S("icon_plus"), Color.white);
-                Place(pi.rectTransform, new Vector2(0.5f, 0.5f), new Vector2(0f, 3f), new Vector2(40f, 40f));
+                var p = Btn("Plus", pill, R.Pill, C.Success, C.SuccessEdge, TB.PlusEdge, out _, out _, out var content);
+                Place(p.transform, new Vector2(0f, 0.5f), new Vector2(0f, 0.5f), new Vector2(x, 0f), Vector2.one * TB.PlusButton);
+                var pi = Img("Icon", content, Spr("icon_plus"), Color.white);
+                Place(pi.rectTransform, Center, Center, Vector2.zero, Vector2.one * TB.PlusIcon);
                 Set(counter, "plusButton", p);
             }
             return counter;
         }
 
-        private static string IconName(BoosterType t) =>
-            t == BoosterType.ExtraSlot ? "booster_slot" : t == BoosterType.Drill ? "booster_drill" : "booster_magnet";
-
         // ---------- primitives ----------
+
+        private static RectTransform Node(string name, Transform parent)
+        {
+            var rt = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
+            rt.SetParent(parent, false);
+            return rt;
+        }
 
         private static Image Img(string name, Transform parent, Sprite sprite, Color color)
         {
-            var go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            var img = go.AddComponent<Image>();
+            var img = Node(name, parent).gameObject.AddComponent<Image>();
             img.sprite = sprite;
             img.color = color;
             img.raycastTarget = false;
@@ -955,64 +988,128 @@ namespace Unscrew.Game.Editor
             return img;
         }
 
-        private static TextMeshProUGUI Txt(string name, Transform parent, string text, float size, Color color, Material preset, TextAlignmentOptions align)
+        /// <summary>9-sliced rounded rect with the exact token radius (sprite texel = canvas unit), or a pill.</summary>
+        private static Image Shape(string name, Transform parent, float radius, Color color)
         {
-            var go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            var t = go.AddComponent<TextMeshProUGUI>();
+            var img = Img(name, parent, radius >= R.Pill ? Spr("pill") : Spr("rr_" + Mathf.RoundToInt(radius)), color);
+            img.type = Image.Type.Sliced;
+            img.pixelsPerUnitMultiplier = 1f;
+            img.preserveAspect = false;
+            return img;
+        }
+
+        private static TextMeshProUGUI Txt(string name, Transform parent, string text, float size, Color color, bool bold = false,
+            TextAlignmentOptions align = TextAlignmentOptions.Center)
+        {
+            var t = Node(name, parent).gameObject.AddComponent<TextMeshProUGUI>();
             t.font = _font;
-            if (preset != null) t.fontSharedMaterial = preset;
             t.text = text;
             t.fontSize = size;
-            t.fontStyle = FontStyles.Normal;
+            t.fontStyle = bold ? FontStyles.Bold : FontStyles.Normal;
             t.color = color;
             t.alignment = align;
             t.raycastTarget = false;
             t.enableWordWrapping = false;
             t.overflowMode = TextOverflowModes.Overflow;
+            t.margin = Vector4.zero;
             return t;
         }
 
-        private static void Size(GameObject go, float w, float h)
+        private static HorizontalLayoutGroup HLayout(GameObject go, float left, float right, float spacing, TextAnchor align)
+        {
+            var h = go.AddComponent<HorizontalLayoutGroup>();
+            h.padding = new RectOffset(Mathf.RoundToInt(left), Mathf.RoundToInt(right), 0, 0);
+            h.spacing = spacing;
+            h.childAlignment = align;
+            h.childControlWidth = true;
+            h.childControlHeight = true;
+            h.childForceExpandWidth = false;
+            h.childForceExpandHeight = false;
+            return h;
+        }
+
+        private static VerticalLayoutGroup VLayout(GameObject go, float left, float right, float top, float bottom, float spacing, TextAnchor align)
+        {
+            var v = go.AddComponent<VerticalLayoutGroup>();
+            v.padding = new RectOffset(Mathf.RoundToInt(left), Mathf.RoundToInt(right), Mathf.RoundToInt(top), Mathf.RoundToInt(bottom));
+            v.spacing = spacing;
+            v.childAlignment = align;
+            v.childControlWidth = true;
+            v.childControlHeight = true;
+            v.childForceExpandWidth = true;
+            v.childForceExpandHeight = false;
+            return v;
+        }
+
+        private static void Fit(RectTransform rt, bool width, bool height)
+        {
+            var f = rt.gameObject.AddComponent<ContentSizeFitter>();
+            if (width) f.horizontalFit = ContentSizeFitter.FitMode.PreferredSize;
+            if (height) f.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+        }
+
+        /// <summary>Layout size (-1 = leave) and flexible weights.</summary>
+        private static void Size(GameObject go, float w, float h, float flexW = -1f, float flexH = -1f)
         {
             var le = go.GetComponent<LayoutElement>() ?? go.AddComponent<LayoutElement>();
             if (w >= 0f) { le.preferredWidth = w; le.minWidth = w; }
             if (h >= 0f) { le.preferredHeight = h; le.minHeight = h; }
+            if (flexW >= 0f) le.flexibleWidth = flexW;
+            if (flexH >= 0f) le.flexibleHeight = flexH;
         }
 
-        private static void Place(Transform t, Vector2 anchor, Vector2 pos, Vector2 size)
+        /// <summary>Fixed vertical gap in a layout group (e.g. what remains of a header icon pulled up with a negative margin).</summary>
+        private static void Space(Transform parent, float height)
+        {
+            var sp = Node("Spacer", parent);
+            Size(sp.gameObject, -1f, height);
+        }
+
+        /// <summary>Flexible gap (CSS justify-content: space-between).</summary>
+        private static void Flex(Transform parent)
+        {
+            var sp = Node("Flex", parent);
+            Size(sp.gameObject, 0f, -1f, 1f);
+        }
+
+        private static void Ignore(RectTransform rt)
+        {
+            var le = rt.GetComponent<LayoutElement>() ?? rt.gameObject.AddComponent<LayoutElement>();
+            le.ignoreLayout = true;
+        }
+
+        private static void Place(Transform t, Vector2 anchor, Vector2 pivot, Vector2 pos, Vector2 size)
         {
             var rt = (RectTransform)t;
             rt.anchorMin = rt.anchorMax = anchor;
-            rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.pivot = pivot;
             rt.anchoredPosition = pos;
             rt.sizeDelta = size;
         }
 
-        private static void Stretch(RectTransform rt, float inset = 0f, float offsetY = 0f)
+        /// <summary>Frame-local rect by its left x and top y (y down).</summary>
+        private static void TopLeft(RectTransform rt, float x, float top, float w, float h) =>
+            Place(rt, new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(x, -top), new Vector2(w, h));
+
+        /// <summary>Frame-local rect by its left x and bottom y (y up).</summary>
+        private static void BottomLeft(RectTransform rt, float x, float bottom, float w, float h) =>
+            Place(rt, Vector2.zero, Vector2.zero, new Vector2(x, bottom), new Vector2(w, h));
+
+        /// <summary>Stretched with insets from the parent's left / bottom / right / top.</summary>
+        private static void Stretch(RectTransform rt, float left = 0f, float bottom = 0f, float right = 0f, float top = 0f)
         {
-            Anchor(rt, Vector2.zero, Vector2.one, new Vector2(inset, inset + offsetY), new Vector2(-inset, -inset + offsetY));
+            rt.anchorMin = Vector2.zero;
+            rt.anchorMax = Vector2.one;
+            rt.pivot = Center;
+            rt.offsetMin = new Vector2(left, bottom);
+            rt.offsetMax = new Vector2(-right, -top);
         }
 
-        private static void Anchor(RectTransform rt, Vector2 aMin, Vector2 aMax, Vector2 oMin, Vector2 oMax)
-        {
-            rt.anchorMin = aMin;
-            rt.anchorMax = aMax;
-            rt.offsetMin = oMin;
-            rt.offsetMax = oMax;
-        }
-
-        private static Sprite S(string name)
+        private static Sprite Spr(string name)
         {
             var s = UiSpriteFactory.Get(name);
             if (s == null) throw new FileNotFoundException("UiBuilder: sprite missing " + name);
             return s;
-        }
-
-        private static Color Hex(string hex)
-        {
-            ColorUtility.TryParseHtmlString("#" + hex, out var c);
-            return c;
         }
 
         private static void Set(Object target, string field, Object value)

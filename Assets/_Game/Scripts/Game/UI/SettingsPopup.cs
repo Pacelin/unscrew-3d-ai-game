@@ -4,7 +4,10 @@ using UnityEngine.UI;
 
 namespace Unscrew.Game
 {
-    /// <summary>Settings (menu) and pause (in game: + Resume / Restart / Home). Toggles are saved in GameSettings.</summary>
+    /// <summary>
+    /// Pause (Pause.dc.html: Sound / Vibration switch rows, Resume, Restart + Home) and, from the menu, the same card as
+    /// "Settings" with a single "Close" button. Tapping the scrim closes it. Toggles are saved in GameSettings.
+    /// </summary>
     public sealed class SettingsPopup : UiPanel
     {
         [SerializeField] private TMP_Text title;
@@ -13,6 +16,7 @@ namespace Unscrew.Game
         [SerializeField] private Button closeButton;
         [SerializeField] private GameObject gameButtons;
         [SerializeField] private Button resumeButton;
+        [SerializeField] private TMP_Text resumeLabel;
         [SerializeField] private Button restartButton;
         [SerializeField] private Button homeButton;
 
@@ -33,6 +37,7 @@ namespace Unscrew.Game
         {
             title.text = paused ? "Paused" : "Settings";
             gameButtons.SetActive(paused);
+            resumeLabel.text = paused ? "Resume" : "Close";
             sound.Set(_settings.Sound);
             vibration.Set(_settings.Vibration);
             Open();

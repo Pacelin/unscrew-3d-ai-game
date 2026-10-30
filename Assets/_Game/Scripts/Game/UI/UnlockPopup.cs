@@ -7,9 +7,11 @@ using UnityEngine.UI;
 
 namespace Unscrew.Game
 {
-    /// <summary>"New booster!" popup for each newly unlocked booster (with the free piece), shown one after another.</summary>
+    /// <summary>"New booster" popup (Unlock.dc.html) for each newly unlocked booster (with the free piece), one after another.</summary>
     public sealed class UnlockPopup : UiPanel
     {
+        [SerializeField] private Image tile;
+        [SerializeField] private Image tileEdge;
         [SerializeField] private Image icon;
         [SerializeField] private TMP_Text nameText;
         [SerializeField] private TMP_Text descText;
@@ -30,7 +32,8 @@ namespace Unscrew.Game
         {
             _queue.Clear();
             foreach (var t in types) _queue.Enqueue(t);
-            giftText.text = freePieces > 0 ? $"+{freePieces} free!" : "";
+            giftText.text = freePieces > 0 ? $"+{freePieces} free" : "";
+            giftText.transform.parent.gameObject.SetActive(freePieces > 0);
             _onDone = onDone;
             Next();
         }
@@ -47,8 +50,11 @@ namespace Unscrew.Game
             }
             var t = _queue.Dequeue();
             icon.sprite = _root.BoosterIcon(t);
+            icon.color = BoosterInfo.Ink(t);
+            tile.color = BoosterInfo.Face(t);
+            tileEdge.color = BoosterInfo.Edge(t);
             nameText.text = BoosterInfo.Name(t);
-            descText.text = BoosterInfo.Description(t);
+            descText.text = BoosterInfo.HowTo(t);
             Open();
         }
     }

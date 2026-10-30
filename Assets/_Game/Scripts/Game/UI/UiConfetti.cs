@@ -13,11 +13,7 @@ namespace Unscrew.Game
         [SerializeField] private int count = 70;
         [SerializeField] private float duration = 2.8f;
         [SerializeField] private float gravity = 2600f;
-        [SerializeField] private Color[] colors =
-        {
-            new Color(1f, 0.33f, 0.41f), new Color(1f, 0.78f, 0.23f), new Color(0.3f, 0.78f, 0.35f),
-            new Color(0.24f, 0.61f, 1f), new Color(0.6f, 0.42f, 1f), new Color(1f, 0.6f, 0.18f),
-        };
+        [SerializeField] private Color[] colors = (Color[])UiTokens.Colors.Confetti.Clone();
 
         private RectTransform[] _pieces;
         private Vector2[] _pos;

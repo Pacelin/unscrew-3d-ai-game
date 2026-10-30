@@ -4,7 +4,10 @@ using UnityEngine;
 
 namespace Unscrew.Game
 {
-    /// <summary>Short message pill that fades out ("Not enough coins", "Unlocks at level 5"). Placed by the caller.</summary>
+    /// <summary>
+    /// Dark message pill (Shop.dc.html bottom pill) that fades out ("Not enough coins", "Unlocks at level 5").
+    /// Lives in a UiFrame, anchored to its bottom center; the caller gives the bottom offset of the current screen.
+    /// </summary>
     [RequireComponent(typeof(CanvasGroup))]
     public sealed class Toast : MonoBehaviour
     {
@@ -12,13 +15,14 @@ namespace Unscrew.Game
 
         private Coroutine _routine;
 
-        /// <param name="anchorY">Vertical position as a fraction of the screen (kept clear of the widgets underneath).</param>
-        public void Show(string message, float anchorY, float seconds = 1.6f)
+        /// <param name="bottom">Distance of the pill's bottom edge from the content frame bottom (canvas units).</param>
+        public void Show(string message, float bottom, float seconds = UiTokens.Toast.Seconds)
         {
             gameObject.SetActive(true);
-            transform.SetAsLastSibling();
+            var layer = transform.parent;
+            if (layer != null && layer.parent != null) layer.parent.SetAsLastSibling();
             var rt = (RectTransform)transform;
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, anchorY);
+            rt.anchoredPosition = new Vector2(0f, bottom);
             label.text = message;
             if (_routine != null) StopCoroutine(_routine);
             _routine = StartCoroutine(Routine(seconds));

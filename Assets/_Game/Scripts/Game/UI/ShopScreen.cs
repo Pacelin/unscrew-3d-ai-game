@@ -7,8 +7,9 @@ using UnityEngine.UI;
 namespace Unscrew.Game
 {
     /// <summary>
-    /// Shop over any screen. Cards are created at runtime from ShopCatalog (one card per booster type with its packs,
-    /// one card for coin offers); purchases go through Shop.TryBuy, the free coins item through the rewarded-ad stub.
+    /// Shop over any screen (Shop.dc.html): a 2-column grid of cards created at runtime from ShopCatalog, one per item,
+    /// scrolling when there are more than fit. Purchases go through Shop.TryBuy, the free coins item through the
+    /// rewarded-ad stub with its 60 s cooldown.
     /// </summary>
     public sealed class ShopScreen : UiPanel
     {
@@ -18,7 +19,6 @@ namespace Unscrew.Game
         [SerializeField] private ShopCard cardTemplate;
 
         private readonly List<ShopCard> _cards = new List<ShopCard>();
-        private readonly List<int> _cardBooster = new List<int>();
         private UiRoot _root;
 
         public event Action Closed;
@@ -48,77 +48,65 @@ namespace Unscrew.Game
             if (was) Closed?.Invoke();
         }
 
+        /// <summary>One card per catalog item: the single packs first (as in the mockup), then free coins, then bigger packs.</summary>
         private void BuildCards()
         {
             var items = _root.Player.Shop.Catalog.Items;
+            var ordered = new List<ShopItem>();
             for (int type = 0; type < BoosterInventory.TypeCount; type++)
             {
-                var packs = new List<ShopItem>();
+                ShopItem smallest = null;
                 foreach (var it in items)
-                    if (it != null && it.kind == ShopItemKind.Booster && (int)it.booster == type) packs.Add(it);
-                if (packs.Count == 0) continue;
-                var bt = (BoosterType)type;
-                var card = NewCard(packs);
-                card.Setup(_root.BoosterIcon(bt), BoosterInfo.Name(bt), BoosterInfo.Description(bt));
-                _cardBooster.Add(type);
+                    if (it != null && it.kind == ShopItemKind.Booster && (int)it.booster == type && (smallest == null || it.amount < smallest.amount))
+                        smallest = it;
+                if (smallest != null) ordered.Add(smallest);
             }
-            var coinItems = new List<ShopItem>();
-            foreach (var it in items) if (it != null && it.kind == ShopItemKind.Coins) coinItems.Add(it);
-            if (coinItems.Count > 0)
-            {
-                var card = NewCard(coinItems);
-                card.Setup(_root.CoinSprite, "Free coins", "Watch a short video");
-                _cardBooster.Add(-1);
-            }
+            foreach (var it in items) if (it != null && it.kind == ShopItemKind.Coins) ordered.Add(it);
+            foreach (var it in items) if (it != null && !ordered.Contains(it)) ordered.Add(it);
+            foreach (var it in ordered) NewCard(it);
         }
 
-        private ShopCard NewCard(List<ShopItem> offers)
+        private void NewCard(ShopItem item)
         {
             var card = Instantiate(cardTemplate, content);
             card.gameObject.SetActive(true);
-            card.name = "Card_" + offers[0].id;
-            // Offers fill the buttons from the right, so a single offer sits at the card's edge.
-            int first = card.Buttons.Length - offers.Count;
-            for (int i = 0; i < card.Buttons.Length; i++)
+            card.name = "Card_" + item.id;
+            if (item.kind == ShopItemKind.Booster)
             {
-                var b = card.Buttons[i];
-                bool used = i >= first && i - first < offers.Count;
-                b.gameObject.SetActive(used);
-                if (!used) continue;
-                b.Bind(offers[i - first]);
-                b.Clicked += OnBuy;
+                var bt = item.booster;
+                card.Setup(_root.BoosterIcon(bt), BoosterInfo.Ink(bt), BoosterInfo.Face(bt), UiTokens.Shop.TileIcon,
+                    BoosterInfo.Name(bt) + (item.amount > 1 ? " ×" + item.amount : ""), BoosterInfo.Description(bt));
             }
+            else
+            {
+                card.Setup(_root.CoinsSprite, Color.white, UiTokens.Colors.RewardBg, UiTokens.Shop.TileIconCoins,
+                    "+" + item.amount + " coins", item.price <= 0 ? "Watch a short video" : "Coin pack");
+            }
+            card.Buy.Bind(item);
+            card.Buy.Clicked += OnBuy;
             _cards.Add(card);
-            return card;
         }
 
         private void Refresh()
         {
             if (_root == null) return;
             var p = _root.Player;
-            for (int i = 0; i < _cards.Count; i++)
+            foreach (var card in _cards)
             {
-                var card = _cards[i];
-                int type = _cardBooster[i];
-                if (type >= 0)
-                {
-                    var bt = (BoosterType)type;
-                    bool unlocked = p.Unlocks.IsUnlocked(bt);
-                    card.SetOwned(unlocked ? p.Inventory.GetCount(bt) : -1);
-                    card.SetLocked(!unlocked, p.Unlocks.GetUnlockLevel(bt));
-                }
-                else
-                {
-                    card.SetOwned(-1);
-                    card.SetLocked(false, 0);
-                }
-                foreach (var b in card.Buttons)
-                {
-                    if (b.Item == null) continue;
-                    b.SetResult(p.Shop.CanBuy(b.Item.id));
-                    if (IsFreeVideo(b.Item)) b.SetCooldown(AdCooldown.SecondsLeft);
-                }
+                var item = card.Buy.Item;
+                bool locked = item.kind == ShopItemKind.Booster && !p.Unlocks.IsUnlocked(item.booster);
+                card.SetLocked(locked, locked ? p.Unlocks.GetUnlockLevel(item.booster) : 0);
+                card.Buy.SetResult(p.Shop.CanBuy(item.id));
+                if (IsFreeVideo(item)) card.Buy.SetCooldown(AdCooldown.SecondsLeft);
             }
+        }
+
+        /// <summary>Text of the "can't afford" toast: points to the free video when there is one.</summary>
+        private string NotEnoughCoinsText()
+        {
+            foreach (var card in _cards)
+                if (IsFreeVideo(card.Buy.Item)) return "Not enough coins — watch a video for +" + card.Buy.Item.amount;
+            return "Not enough coins";
         }
 
         private static bool IsFreeVideo(ShopItem item) => item.kind == ShopItemKind.Coins && item.price <= 0;
@@ -126,9 +114,8 @@ namespace Unscrew.Game
         /// <summary>Ticks the "next video in" timer on the free coins button (text changes once per second).</summary>
         private void Update()
         {
-            for (int i = 0; i < _cards.Count; i++)
-                foreach (var b in _cards[i].Buttons)
-                    if (b.Item != null && IsFreeVideo(b.Item)) b.SetCooldown(AdCooldown.SecondsLeft);
+            foreach (var card in _cards)
+                if (IsFreeVideo(card.Buy.Item)) card.Buy.SetCooldown(AdCooldown.SecondsLeft);
         }
 
         private void OnBuy(ShopBuyButton button)
@@ -138,7 +125,7 @@ namespace Unscrew.Game
             if (can == ShopResult.NotEnoughCoins)
             {
                 button.Nudge();
-                _root.ShowToast("Not enough coins");
+                _root.ShowToast(NotEnoughCoinsText());
                 return;
             }
             if (can == ShopResult.Locked)
