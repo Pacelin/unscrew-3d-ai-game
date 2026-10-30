@@ -15,6 +15,9 @@ namespace Unscrew.Game
     {
         [SerializeField] private LevelView levelView;
         [SerializeField] private TrayView trayView;
+        [SerializeField] private FxService fx;
+        [Tooltip("Pause in the event queue while the lid of a completed box snaps on.")]
+        [SerializeField] private float lidTime = 0.16f;
 
         private struct Step
         {
@@ -27,6 +30,7 @@ namespace Unscrew.Game
 
         private readonly Queue<Step> _queue = new Queue<Step>();
         private Camera _cam;
+        private LevelCatalog _catalog;
         private bool _processing;
         private int _running;
 
@@ -41,6 +45,7 @@ namespace Unscrew.Game
         {
             ResetQueue();
             _cam = cam;
+            _catalog = catalog;
             levelView.Build(cam, catalog, sourceNumber, session);
             trayView.Setup(cam, catalog, session.Collector);
         }
@@ -56,7 +61,10 @@ namespace Unscrew.Game
         public void RejectTap(int boltId)
         {
             var bolt = levelView.GetBolt(boltId);
-            if (bolt != null) bolt.Shake();
+            if (bolt == null) return;
+            bolt.Shake();
+            Feedback.Play(Sfx.Blocked, 0.9f);
+            Feedback.Haptic(15);
         }
 
         /// <summary>Queues the results of one Tap/ForceRemove/booster call.</summary>
@@ -77,6 +85,7 @@ namespace Unscrew.Game
         private void ResetQueue()
         {
             StopAllCoroutines();
+            if (fx != null) fx.ResetAll();
             _queue.Clear();
             _processing = false;
             _running = 0;
@@ -98,7 +107,12 @@ namespace Unscrew.Game
             if (step.isPart)
             {
                 var part = step.partId < levelView.Parts.Length ? levelView.Parts[step.partId] : null;
-                if (part != null) part.Release(levelView.Pivot.position, _cam, Anim.UnscrewTime * 0.8f, levelView.FallenRoot);
+                if (part != null)
+                {
+                    float delay = Anim.UnscrewTime * 0.8f;
+                    part.Release(levelView.Pivot.position, _cam, delay, levelView.FallenRoot);
+                    StartCoroutine(PartFx(part, delay));
+                }
                 yield break;
             }
 
@@ -112,7 +126,7 @@ namespace Unscrew.Game
                     if (bolt == null || box == null) yield break;
                     var slot = box.ReserveSlot();
                     box.Incoming++;
-                    StartCoroutine(Track(UnscrewAndFly(bolt, slot, () => box.Incoming--)));
+                    StartCoroutine(Track(UnscrewAndFly(bolt, slot, box)));
                     if (step.stagger > 0f) yield return Wait(step.stagger);
                     break;
                 }
@@ -137,7 +151,7 @@ namespace Unscrew.Game
                     var slot = box.ReserveSlot();
                     box.Incoming++;
                     bolt.InFlight = true;
-                    StartCoroutine(Track(FlyTo(bolt, slot, Anim.BufferToBoxTime, () => box.Incoming--)));
+                    StartCoroutine(Track(FlyTo(bolt, slot, Anim.BufferToBoxTime, box)));
                     yield return Wait(0.06f);
                     break;
                 }
@@ -146,20 +160,29 @@ namespace Unscrew.Game
                     var box = trayView.GetBox(e.boxSlot);
                     if (box == null) yield break;
                     while (box.Incoming > 0) yield return null;
-                    yield return Wait(0.08f);
+                    yield return Wait(0.04f);
                     trayView.TakeBox(e.boxSlot);
+                    // Lid snaps on (the queue waits so the next box doesn't slide into a closing one), then the box bounces away.
+                    yield return box.SnapLid(lidTime);
+                    if (fx != null) fx.Sparkle(box.transform.position - box.transform.forward * box.Width * 0.2f, box.Tint, box.Width, 20);
+                    Feedback.Play(Sfx.BoxComplete);
+                    Feedback.Haptic(30);
                     StartCoroutine(Track(BoxLeave(box, e.boxSlot)));
+                    // The next box slides in once this one has bounced and starts leaving.
+                    yield return Wait(0.2f);
                     break;
                 }
                 case CollectEventType.BoxActivated:
                 {
                     var box = trayView.SpawnBox(e.boxSlot, e.color, true);
+                    Feedback.Play(Sfx.Pop, 0.5f, 1.15f);
                     yield return Slide(box.transform, trayView.BoxLocal(e.boxSlot), Anim.BoxEnterTime);
                     break;
                 }
                 case CollectEventType.BufferSlotAdded:
                 {
                     var hole = trayView.AddHole();
+                    Feedback.Play(Sfx.Pop);
                     StartCoroutine(Track(PopIn(hole.transform)));
                     break;
                 }
@@ -173,13 +196,17 @@ namespace Unscrew.Game
             _running--;
         }
 
-        private IEnumerator UnscrewAndFly(BoltView bolt, Transform target, System.Action onLand)
+        /// <summary><paramref name="box"/> = destination box (null: a buffer hole).</summary>
+        private IEnumerator UnscrewAndFly(BoltView bolt, Transform target, BoxVisual box)
         {
             bolt.InFlight = true;
             bolt.Detach(trayView.transform);
+            Feedback.Play(Sfx.Unscrew, 1f, Random.Range(0.94f, 1.08f));
+            Feedback.Haptic(20);
             var t = bolt.transform;
             var startPos = t.position;
             var startRot = t.rotation;
+            var startScale = t.localScale;
             var axis = t.forward;
             float travel = bolt.Length * 2.2f;
             float k = 0f;
@@ -188,16 +215,22 @@ namespace Unscrew.Game
                 k += Anim.Delta / Anim.UnscrewTime;
                 float e = Anim.OutCubic(k);
                 t.position = startPos + axis * (travel * e);
-                t.rotation = Quaternion.AngleAxis(720f * e, axis) * startRot;
+                t.rotation = Quaternion.AngleAxis(900f * e, axis) * startRot;
+                // Pop: the bolt swells as it leaves the hole and settles back before flying.
+                t.localScale = startScale * (1f + 0.28f * Mathf.Sin(Mathf.Clamp01(k) * Mathf.PI));
                 yield return null;
             }
-            yield return FlyTo(bolt, target, Anim.FlyTime, onLand);
+            t.localScale = startScale;
+            yield return FlyTo(bolt, target, Anim.FlyTime, box);
         }
 
-        private IEnumerator FlyTo(BoltView bolt, Transform target, float duration, System.Action onLand)
+        private IEnumerator FlyTo(BoltView bolt, Transform target, float duration, BoxVisual box)
         {
             var t = bolt.transform;
             t.SetParent(trayView.transform, true);
+            int trail = fx != null && _catalog != null
+                ? fx.AttachTrail(t, bolt.HeadOffsetLocal, _catalog.GetColor(bolt.Color), trayView.BoltHeadSize * 0.6f)
+                : -1;
             var startPos = t.position;
             var startRot = t.rotation;
             var startScale = t.lossyScale;
@@ -225,8 +258,27 @@ namespace Unscrew.Game
             t.rotation = finalRot;
             SetWorldScale(t, endScale);
             t.position = target.position - finalRot * Vector3.Scale(bolt.HeadOffsetLocal, endScale);
-            onLand?.Invoke();
+            if (fx != null) fx.ReleaseTrail(trail);
+            if (box != null)
+            {
+                box.Incoming--;
+                box.OnBoltLanded();
+                Feedback.Play(Sfx.LandBox, 1f, 1f + 0.12f * (box.Landed - 1));
+            }
+            else Feedback.Play(Sfx.LandHole, 0.9f);
             bolt.InFlight = false;
+        }
+
+        /// <summary>Dust puff and a whoosh when the part actually leaves (after the release delay).</summary>
+        private IEnumerator PartFx(PartView part, float delay)
+        {
+            yield return Wait(delay);
+            if (part == null) yield break;
+            var r = part.GetComponent<Renderer>();
+            if (r == null) yield break;
+            var b = r.bounds;
+            if (fx != null) fx.Dust(b.center, Mathf.Clamp(b.extents.magnitude * 0.5f, 0.3f, 4f));
+            Feedback.Play(Sfx.PartFall, 0.8f, Random.Range(0.9f, 1.1f));
         }
 
         /// <summary>New buffer hole: grows from zero with an overshoot (target scale = the layout scale).</summary>
@@ -246,17 +298,27 @@ namespace Unscrew.Game
         private IEnumerator BoxLeave(BoxVisual box, int slot)
         {
             var t = box.transform;
-            var from = t.localPosition;
-            var to = trayView.OffscreenUp(slot);
-            var baseScale = t.localScale;
+            var v = box.Visual;
+            // Squash-and-stretch bounce in place, then a wind-up and away.
             float k = 0f;
             while (k < 1f)
             {
+                k += Anim.Delta / 0.16f;
+                float s = Mathf.Sin(Mathf.Clamp01(k) * Mathf.PI);
+                v.localScale = new Vector3(1f + 0.14f * s, 1f - 0.1f * s, 1f);
+                yield return null;
+            }
+            v.localScale = Vector3.one;
+            var from = t.localPosition;
+            var to = trayView.OffscreenUp(slot);
+            var baseRot = t.localRotation;
+            float tilt = slot % 2 == 0 ? -12f : 12f;
+            k = 0f;
+            while (k < 1f)
+            {
                 k += Anim.Delta / Anim.BoxLeaveTime;
-                // Small "pop" first, then accelerate away.
-                float pop = 1f + 0.12f * Mathf.Sin(Mathf.Clamp01(k * 2f) * Mathf.PI);
-                t.localScale = baseScale * pop;
-                t.localPosition = Vector3.LerpUnclamped(from, to, Anim.InQuad(k));
+                t.localPosition = Vector3.LerpUnclamped(from, to, Anim.InBack(k));
+                t.localRotation = baseRot * Quaternion.Euler(0f, 0f, tilt * Mathf.Clamp01(k));
                 yield return null;
             }
             Destroy(box.gameObject);
@@ -269,7 +331,7 @@ namespace Unscrew.Game
             while (k < 1f)
             {
                 k += Anim.Delta / duration;
-                t.localPosition = Vector3.LerpUnclamped(from, toLocal, Anim.OutCubic(k));
+                t.localPosition = Vector3.LerpUnclamped(from, toLocal, Anim.OutBack(k));
                 yield return null;
             }
         }

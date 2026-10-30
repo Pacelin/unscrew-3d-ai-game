@@ -90,3 +90,4 @@ MonoBehaviour:
   - {fileID: 2448312461281716384, guid: 19f1501866231cad4b749308a67afd33, type: 3}
   boxPrefab: {fileID: 2545213545314530840, guid: 540d622e1b30cd2469e1edbae36287e0, type: 3}
   holePrefab: {fileID: 7312751187295552711, guid: 1fe34de2af6d5d54b8e06a973c01f61d, type: 3}
+  trayPanelMaterial: {fileID: 2100000, guid: 8568f343e325a154a9a35832e3787127, type: 2}

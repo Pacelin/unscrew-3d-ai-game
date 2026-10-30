@@ -13,7 +13,7 @@ namespace Unscrew.Game
         public const string BoltLayerName = "Bolt";
 
         [Tooltip("Viewport rect (x, y, w, h) inside the safe area the model must fit into (below the tray, above the booster bar).")]
-        [SerializeField] private Rect modelViewport = new Rect(0.03f, 0.155f, 0.94f, 0.545f);
+        [SerializeField] private Rect modelViewport = new Rect(0.03f, 0.172f, 0.94f, 0.528f);
         [Tooltip("Negative = top of the model tilted toward the camera (seen slightly from above).")]
         [SerializeField] private float startPitch = -15f;
         [SerializeField] private float minPitch = -60f;

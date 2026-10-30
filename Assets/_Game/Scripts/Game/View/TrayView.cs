@@ -16,6 +16,9 @@ namespace Unscrew.Game
         [SerializeField] private float boxWidthFraction = 0.27f;
         [SerializeField] private float boxGapFraction = 0.045f;
         [SerializeField] private float holeRowWidthFraction = 0.9f;
+        [Tooltip("Box width cap as a fraction of the view height (wide screens like 3:4 keep 9:16 box size).")]
+        [SerializeField] private float boxWidthMaxOfHeight = 0.152f;
+        [SerializeField] private float warningPulseSpeed = 9f;
 
         private Camera _cam;
         private LevelCatalog _catalog;
@@ -26,6 +29,11 @@ namespace Unscrew.Game
         private float _boxWidth;
         private float _holeStep;
         private float _lastAspect;
+        private Transform _panel;
+        private Mesh _panelMesh;
+        private int _panelHoles = -1;
+        private bool _warning;
+        private float _warnTime;
 
         public int BoxSlotCount => _boxes.Length;
         public int HoleCount => _holes.Count;
@@ -61,6 +69,11 @@ namespace Unscrew.Game
             for (int i = transform.childCount - 1; i >= 0; i--) Destroy(transform.GetChild(i).gameObject);
             _boxes = new BoxVisual[0];
             _holes.Clear();
+            _panel = null;
+            if (_panelMesh != null) Destroy(_panelMesh);
+            _panelMesh = null;
+            _panelHoles = -1;
+            _warning = false;
         }
 
         public BoxVisual GetBox(int slot) => slot >= 0 && slot < _boxes.Length ? _boxes[slot] : null;
@@ -123,6 +136,26 @@ namespace Unscrew.Game
                 ComputeMetrics();
                 Relayout();
             }
+            UpdateWarning();
+        }
+
+        /// <summary>Only one free hole left (of two or more): it pulses red, with a warning sound on entering the state.</summary>
+        private void UpdateWarning()
+        {
+            int free = 0;
+            HoleVisual last = null;
+            for (int i = 0; i < _holes.Count; i++)
+                if (_holes[i].Bolt == null) { free++; last = _holes[i]; }
+            bool warn = _holes.Count >= 2 && free == 1;
+            if (warn && !_warning)
+            {
+                _warnTime = 0f;
+                Feedback.Play(Sfx.Warning, 0.8f);
+            }
+            _warning = warn;
+            _warnTime += Time.deltaTime;
+            float k = warn ? 0.25f + 0.6f * (0.5f + 0.5f * Mathf.Sin(_warnTime * warningPulseSpeed)) : 0f;
+            for (int i = 0; i < _holes.Count; i++) _holes[i].SetWarning(_holes[i] == last ? k : 0f);
         }
 
         private void ComputeMetrics()
@@ -130,7 +163,7 @@ namespace Unscrew.Game
             _lastAspect = _cam.aspect;
             _halfH = distance * Mathf.Tan(_cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
             _halfW = _halfH * _cam.aspect;
-            _boxWidth = boxWidthFraction * 2f * _halfW;
+            _boxWidth = Mathf.Min(boxWidthFraction * 2f * _halfW, boxWidthMaxOfHeight * 2f * _halfH);
         }
 
         private void Relayout()
@@ -153,7 +186,37 @@ namespace Unscrew.Game
                 t.localScale = Vector3.one * size;
                 t.localPosition = new Vector3((i - (n - 1) * 0.5f) * _holeStep, y, 0f);
             }
+            LayoutPanel(n, y);
         }
+
+        /// <summary>Rounded plate behind the hole row; the mesh is rebuilt only when the hole count or size changes.</summary>
+        private void LayoutPanel(int n, float y)
+        {
+            if (_catalog == null || _catalog.trayPanelMaterial == null) return;
+            if (_panel == null)
+            {
+                var go = new GameObject("HolePanel", typeof(MeshFilter), typeof(MeshRenderer));
+                _panel = go.transform;
+                _panel.SetParent(transform, false);
+                var r = go.GetComponent<MeshRenderer>();
+                r.sharedMaterial = _catalog.trayPanelMaterial;
+                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                r.receiveShadows = false;
+            }
+            if (_panelHoles != n || !Mathf.Approximately(_lastAspect, _panelAspect))
+            {
+                _panelHoles = n;
+                _panelAspect = _lastAspect;
+                if (_panelMesh != null) Destroy(_panelMesh);
+                float h = _holeStep * 1.12f;
+                float w = n * _holeStep + _holeStep * 0.3f;
+                _panelMesh = ProceduralMesh.RoundedSlab("HolePanel", w, h, h * 0.25f, h * 0.5f, h * 0.12f, 8);
+                _panel.GetComponent<MeshFilter>().sharedMesh = _panelMesh;
+            }
+            _panel.localPosition = new Vector3(0f, y, _holeStep * 0.12f);
+        }
+
+        private float _panelAspect;
 
         /// <summary>Rows are placed in viewport fractions of the safe area (so a notch never covers the boxes).</summary>
         private float ViewportToLocalY(float v)
