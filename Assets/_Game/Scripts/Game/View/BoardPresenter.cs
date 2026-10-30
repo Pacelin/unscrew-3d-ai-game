@@ -96,7 +96,7 @@ namespace Unscrew.Game
             if (step.isPart)
             {
                 var part = step.partId < levelView.Parts.Length ? levelView.Parts[step.partId] : null;
-                if (part != null) part.Release(levelView.Pivot.position, _cam, Anim.UnscrewTime * 0.8f);
+                if (part != null) part.Release(levelView.Pivot.position, _cam, Anim.UnscrewTime * 0.8f, levelView.FallenRoot);
                 yield break;
             }
 

@@ -34,7 +34,7 @@ namespace Unscrew.Game
         private void ShowOverlay(bool won)
         {
             Refresh();
-            overlayTitle.text = won ? "Level complete!" : "Out of space!";
+            overlayTitle.text = won ? "Level complete!" : "Out of moves!";
             nextButton.gameObject.SetActive(won);
             overlay.SetActive(true);
         }

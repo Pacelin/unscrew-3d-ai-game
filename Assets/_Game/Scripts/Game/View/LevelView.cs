@@ -21,6 +21,7 @@ namespace Unscrew.Game
 
         private Camera _cam;
         private Transform _pivot;
+        private Transform _fallen;
         private GameObject _instance;
         private float _yaw;
         private float _pitch;
@@ -66,6 +67,10 @@ namespace Unscrew.Game
                 var sb = source.bolts[i];
                 var t = _instance.transform.Find(sb.nodePath);
                 if (t == null) { Debug.LogError($"[LevelView] L{sourceNumber}: bolt {i} '{sb.nodePath}' not found"); continue; }
+                // Rule 1 of the bake: embedded heads are lifted out along the bolt axis. headLift is in level world
+                // units at pivot scale 1, so it is scaled with the pivot if the level is ever scaled.
+                float lift = def.bolts[i].headLift;
+                if (lift > 0f) t.position += t.forward * (lift * _pivot.lossyScale.x);
                 int color = session.GetBoltColor(i);
                 var view = t.gameObject.AddComponent<BoltView>();
                 view.Init(i, color, catalog.GetBoltMaterials(color), boltLayer < 0 ? 0 : boltLayer);
@@ -92,6 +97,8 @@ namespace Unscrew.Game
 
         public void Clear()
         {
+            if (_fallen != null) Destroy(_fallen.gameObject);
+            _fallen = null;
             if (_pivot != null) Destroy(_pivot.gameObject);
             _pivot = null;
             _instance = null;
@@ -104,6 +111,20 @@ namespace Unscrew.Game
         {
             foreach (var b in Bolts)
                 if (b != null && !b.Detached) b.SetDimmed(on && !board.IsAccessible(b.Id));
+        }
+
+        /// <summary>Container for released (falling) parts, so a restart removes them together with the level.</summary>
+        public Transform FallenRoot
+        {
+            get
+            {
+                if (_fallen == null)
+                {
+                    _fallen = new GameObject("FallenParts").transform;
+                    _fallen.SetParent(transform, false);
+                }
+                return _fallen;
+            }
         }
 
         public BoltView GetBolt(int id) => id >= 0 && id < Bolts.Length ? Bolts[id] : null;

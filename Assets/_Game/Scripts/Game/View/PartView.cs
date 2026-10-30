@@ -25,24 +25,24 @@ namespace Unscrew.Game
         }
 
         /// <summary>
-        /// Detaches into world space and drops with an impulse away from <paramref name="modelCenter"/>.
+        /// Detaches into <paramref name="fallenRoot"/> (world pose kept) and drops with an impulse away from <paramref name="modelCenter"/>.
         /// Destroys itself once below the camera view (or after a timeout).
         /// </summary>
-        public void Release(Vector3 modelCenter, Camera cam, float delay)
+        public void Release(Vector3 modelCenter, Camera cam, float delay, Transform fallenRoot)
         {
             if (Released) return;
             Released = true;
-            StartCoroutine(FallRoutine(modelCenter, cam, delay));
+            StartCoroutine(FallRoutine(modelCenter, cam, delay, fallenRoot));
         }
 
-        private IEnumerator FallRoutine(Vector3 modelCenter, Camera cam, float delay)
+        private IEnumerator FallRoutine(Vector3 modelCenter, Camera cam, float delay, Transform fallenRoot)
         {
             if (delay > 0f) yield return new WaitForSeconds(delay / Anim.Speed);
 
             var center = GetWorldCenter();
             // Assembly-space extra force follows the model's current rotation.
             var extra = transform.parent != null ? transform.parent.TransformDirection(_extraForce) : _extraForce;
-            transform.SetParent(null, true);
+            transform.SetParent(fallenRoot, true); // destroyed with the level on restart / next level
             if (_collider != null) Destroy(_collider); // non-convex colliders can't be dynamic; nothing to hit anyway
 
             var away = center - modelCenter;

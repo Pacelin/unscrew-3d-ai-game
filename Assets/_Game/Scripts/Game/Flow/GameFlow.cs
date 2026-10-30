@@ -11,7 +11,7 @@ namespace Unscrew.Game
         Playing,
         /// <summary>Session won, overlay shown (after the last animation finished).</summary>
         Won,
-        /// <summary>Session lost, overlay shown. Stage 5: continue offer (ExtraSlot / coins) hooks here.</summary>
+        /// <summary>Session out of moves, lose screen shown (continue via ExtraSlot / coins).</summary>
         Lost,
     }
 
@@ -42,7 +42,7 @@ namespace Unscrew.Game
         public event Action<int> OnLevelStarted;
         /// <summary>All bolts removed and all animations finished.</summary>
         public event Action<int> OnWin;
-        /// <summary>Buffer full (or deadlock) and all animations finished.</summary>
+        /// <summary>Out of moves (no accessible bolt fits an open box or a free hole) and all animations finished.</summary>
         public event Action<int> OnLose;
         /// <summary>A move was accepted by the session (HUD refresh).</summary>
         public event Action OnMove;
