@@ -735,7 +735,7 @@ namespace Unscrew.Game.Editor
             var label = Txt("Label", box, "Ad is playing...", F.Button, Color.white);
             var track = Shape("Track", box, R.Pill, new Color(1f, 1f, 1f, 0.15f));
             Size(track.gameObject, UiTokens.ContentWidth - 4f * P.Inset, S.X2);
-            var fill = Shape("Fill", track.transform, R.Pill, C.Coin);
+            var fill = Img("Fill", track.transform, null, C.Coin);
             fill.type = Image.Type.Filled;
             fill.fillMethod = Image.FillMethod.Horizontal;
             fill.fillAmount = 0f;
@@ -995,6 +995,7 @@ namespace Unscrew.Game.Editor
             img.type = Image.Type.Sliced;
             img.pixelsPerUnitMultiplier = 1f;
             img.preserveAspect = false;
+            if (radius >= R.Pill) img.gameObject.AddComponent<PillShape>();
             return img;
         }
 
