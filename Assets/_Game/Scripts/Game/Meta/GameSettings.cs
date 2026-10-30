@@ -38,12 +38,10 @@ namespace Unscrew.Game
             Changed?.Invoke();
         }
 
-        /// <summary>Short haptic tick if vibration is enabled (no-op in the editor).</summary>
-        public void Vibrate()
+        /// <summary>Short haptic tick (<paramref name="ms"/> on Android) if vibration is enabled (no-op in the editor).</summary>
+        public void Vibrate(int ms = 40)
         {
-#if UNITY_ANDROID || UNITY_IOS
-            if (Vibration && !Application.isEditor) Handheld.Vibrate();
-#endif
+            if (Vibration) Haptics.Pulse(ms);
         }
 
         private void Apply() => AudioListener.volume = Sound ? 1f : 0f;
