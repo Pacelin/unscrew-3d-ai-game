@@ -155,6 +155,11 @@ namespace Unscrew.Game
             }
         }
 
-        private float ViewportToLocalY(float v) => (2f * v - 1f) * _halfH;
+        /// <summary>Rows are placed in viewport fractions of the safe area (so a notch never covers the boxes).</summary>
+        private float ViewportToLocalY(float v)
+        {
+            float y = LevelView.SafeViewport(new Rect(0f, v, 1f, 0f)).y;
+            return (2f * y - 1f) * _halfH;
+        }
     }
 }

@@ -16,6 +16,16 @@ namespace Unscrew.Game
         public const float BoxLeaveTime = 0.3f;
         public const float BoxEnterTime = 0.25f;
         public const float ShakeTime = 0.3f;
+        public const float HolePopTime = 0.45f;
+
+        /// <summary>Ease-out with overshoot (pop-in).</summary>
+        public static float OutBack(float t)
+        {
+            t = Mathf.Clamp01(t);
+            const float c1 = 1.70158f, c3 = c1 + 1f;
+            float u = t - 1f;
+            return 1f + c3 * u * u * u + c1 * u * u;
+        }
 
         public static float OutCubic(float t)
         {

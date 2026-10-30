@@ -21,6 +21,8 @@ namespace Unscrew.Game
             public bool isPart;
             public int partId;
             public CollectEvent evt;
+            /// <summary>Pause after starting this bolt's flight (Magnet: bolts leave one by one).</summary>
+            public float stagger;
         }
 
         private readonly Queue<Step> _queue = new Queue<Step>();
@@ -58,11 +60,11 @@ namespace Unscrew.Game
         }
 
         /// <summary>Queues the results of one Tap/ForceRemove/booster call.</summary>
-        public void Play(List<CollectEvent> events, List<int> releasedParts)
+        public void Play(List<CollectEvent> events, List<int> releasedParts, float stagger = 0f)
         {
             for (int i = 0; i < events.Count; i++)
             {
-                _queue.Enqueue(new Step { evt = events[i] });
+                _queue.Enqueue(new Step { evt = events[i], stagger = stagger });
                 // Parts fall right after the bolt that held them leaves (first event of a move).
                 if (i == 0)
                     foreach (var p in releasedParts) _queue.Enqueue(new Step { isPart = true, partId = p });
@@ -111,6 +113,7 @@ namespace Unscrew.Game
                     var slot = box.ReserveSlot();
                     box.Incoming++;
                     StartCoroutine(Track(UnscrewAndFly(bolt, slot, () => box.Incoming--)));
+                    if (step.stagger > 0f) yield return Wait(step.stagger);
                     break;
                 }
                 case CollectEventType.BoltToBuffer:
@@ -120,6 +123,7 @@ namespace Unscrew.Game
                     if (bolt == null || hole == null) yield break;
                     hole.Bolt = bolt;
                     StartCoroutine(Track(UnscrewAndFly(bolt, hole.Anchor, null)));
+                    if (step.stagger > 0f) yield return Wait(step.stagger);
                     break;
                 }
                 case CollectEventType.BufferToBox:
@@ -154,8 +158,11 @@ namespace Unscrew.Game
                     break;
                 }
                 case CollectEventType.BufferSlotAdded:
-                    trayView.AddHole();
+                {
+                    var hole = trayView.AddHole();
+                    StartCoroutine(Track(PopIn(hole.transform)));
                     break;
+                }
             }
         }
 
@@ -220,6 +227,20 @@ namespace Unscrew.Game
             t.position = target.position - finalRot * Vector3.Scale(bolt.HeadOffsetLocal, endScale);
             onLand?.Invoke();
             bolt.InFlight = false;
+        }
+
+        /// <summary>New buffer hole: grows from zero with an overshoot (target scale = the layout scale).</summary>
+        private static IEnumerator PopIn(Transform t)
+        {
+            var target = t.localScale;
+            float k = 0f;
+            while (k < 1f)
+            {
+                k += Anim.Delta / Anim.HolePopTime;
+                t.localScale = target * Anim.OutBack(k);
+                yield return null;
+            }
+            t.localScale = target;
         }
 
         private IEnumerator BoxLeave(BoxVisual box, int slot)

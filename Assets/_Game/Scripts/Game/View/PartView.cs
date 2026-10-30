@@ -9,8 +9,11 @@ namespace Unscrew.Game
         public int Id { get; private set; }
         public bool Released { get; private set; }
 
+        private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+
         private MeshCollider _collider;
         private Vector3 _extraForce;
+        private bool _dimmed;
 
         public void Init(int id, Vector3 extraForceLocal)
         {
@@ -24,6 +27,23 @@ namespace Unscrew.Game
             }
         }
 
+        /// <summary>Drill target mode: darkens the part so the bolts stand out.</summary>
+        public void SetDimmed(bool dimmed)
+        {
+            if (_dimmed == dimmed) return;
+            _dimmed = dimmed;
+            var r = GetComponent<Renderer>();
+            if (r == null) return;
+            var mats = r.sharedMaterials;
+            for (int i = 0; i < mats.Length; i++)
+            {
+                if (!dimmed || mats[i] == null || !mats[i].HasProperty(BaseColorId)) { r.SetPropertyBlock(null, i); continue; }
+                var block = new MaterialPropertyBlock();
+                block.SetColor(BaseColorId, mats[i].GetColor(BaseColorId) * 0.45f);
+                r.SetPropertyBlock(block, i);
+            }
+        }
+
         /// <summary>
         /// Detaches into <paramref name="fallenRoot"/> (world pose kept) and drops with an impulse away from <paramref name="modelCenter"/>.
         /// Destroys itself once below the camera view (or after a timeout).
@@ -32,6 +52,7 @@ namespace Unscrew.Game
         {
             if (Released) return;
             Released = true;
+            SetDimmed(false);
             StartCoroutine(FallRoutine(modelCenter, cam, delay, fallenRoot));
         }
 

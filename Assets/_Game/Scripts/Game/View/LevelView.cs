@@ -12,8 +12,8 @@ namespace Unscrew.Game
     {
         public const string BoltLayerName = "Bolt";
 
-        [Tooltip("Viewport rect (x, y, w, h) the model's bounding sphere must fit into.")]
-        [SerializeField] private Rect modelViewport = new Rect(0.02f, 0.05f, 0.96f, 0.65f);
+        [Tooltip("Viewport rect (x, y, w, h) inside the safe area the model must fit into (below the tray, above the booster bar).")]
+        [SerializeField] private Rect modelViewport = new Rect(0.03f, 0.155f, 0.94f, 0.545f);
         [Tooltip("Negative = top of the model tilted toward the camera (seen slightly from above).")]
         [SerializeField] private float startPitch = -15f;
         [SerializeField] private float minPitch = -60f;
@@ -26,6 +26,12 @@ namespace Unscrew.Game
         private float _yaw;
         private float _pitch;
         private Vector3 _extents;
+
+        /// <summary>Degrees per second of idle yaw (main menu showcase); 0 while playing.</summary>
+        public float AutoSpin { get; set; }
+
+        private GameFlow _drillFlow;
+        private float _pulseTime;
 
         public BoltView[] Bolts { get; private set; } = new BoltView[0];
         public PartView[] Parts { get; private set; } = new PartView[0];
@@ -142,8 +148,9 @@ namespace Unscrew.Game
         {
             if (_pivot == null || _cam == null) return;
             _fittedAspect = _cam.aspect;
-            float tanV = Mathf.Tan(_cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * modelViewport.height;
-            float tanH = Mathf.Tan(_cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * _cam.aspect * modelViewport.width;
+            var vp = SafeViewport(modelViewport);
+            float tanV = Mathf.Tan(_cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * vp.height;
+            float tanH = Mathf.Tan(_cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * _cam.aspect * vp.width;
             // Fit the axis-aligned extents rather than the bounding sphere (which makes bolts tiny):
             // horizontal size allows for yaw (most of the XZ diagonal), the near half of the depth adds perspective.
             var e = _extents;
@@ -152,14 +159,54 @@ namespace Unscrew.Game
             float halfH = e.y;
             float depth = 0.5f * Mathf.Max(e.x, e.z);
             float dist = Mathf.Max(halfW / tanH, halfH / tanV) + depth;
-            var ray = _cam.ViewportPointToRay(new Vector3(modelViewport.center.x, modelViewport.center.y, 0f));
+            var ray = _cam.ViewportPointToRay(new Vector3(vp.center.x, vp.center.y, 0f));
             _pivot.position = ray.GetPoint(dist);
         }
 
         private float _fittedAspect;
 
+        /// <summary>Maps a full-screen viewport rect into the vertical safe area (notches, gesture bar).</summary>
+        public static Rect SafeViewport(Rect r)
+        {
+            if (Screen.height <= 0) return r;
+            var safe = Screen.safeArea;
+            float bottom = safe.yMin / Screen.height, top = safe.yMax / Screen.height;
+            return new Rect(r.x, bottom + r.y * (top - bottom), r.width, r.height * (top - bottom));
+        }
+
+        /// <summary>Drill target mode: drillable bolts pulse, the rest are dimmed. null switches it off.</summary>
+        public void SetDrillHighlight(GameFlow flow)
+        {
+            _drillFlow = flow;
+            _pulseTime = 0f;
+            foreach (var p in Parts)
+                if (p != null && !p.Released) p.SetDimmed(flow != null);
+            if (flow != null) return;
+            foreach (var b in Bolts)
+            {
+                if (b == null || b.Detached) continue;
+                b.SetDimmed(false);
+                b.SetPulse(1f);
+            }
+        }
+
+        private void Update()
+        {
+            if (_drillFlow == null) return;
+            _pulseTime += Time.deltaTime;
+            float pulse = 1f + 0.35f * (0.5f + 0.5f * Mathf.Sin(_pulseTime * 9f));
+            foreach (var b in Bolts)
+            {
+                if (b == null || b.Detached) continue;
+                bool ok = _drillFlow.IsDrillable(b.Id);
+                b.SetDimmed(!ok);
+                b.SetPulse(ok ? pulse : 1f);
+            }
+        }
+
         private void LateUpdate()
         {
+            if (_pivot != null && AutoSpin != 0f) Orbit(AutoSpin * Time.deltaTime, 0f);
             // Rotation / resize of the window: keep the model in its viewport rect.
             if (_cam != null && _pivot != null && !Mathf.Approximately(_cam.aspect, _fittedAspect)) FitCamera();
         }

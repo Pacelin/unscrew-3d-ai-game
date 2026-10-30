@@ -27,6 +27,9 @@ namespace Unscrew.Game
 
         private Renderer _renderer;
         private Collider _collider;
+        private Transform _meshT;
+        private Vector3 _meshScale;
+        private bool _dimmed;
         private Coroutine _shake;
 
         public void Init(int id, int color, Material[] materials, int boltLayer)
@@ -38,6 +41,8 @@ namespace Unscrew.Game
 
             var mf = _renderer.GetComponent<MeshFilter>();
             var meshT = _renderer.transform;
+            _meshT = meshT;
+            _meshScale = meshT.localScale;
             var b = mf.sharedMesh.bounds;
             float s = meshT.lossyScale.x;
             HeadSize = Mathf.Max(b.size.x, b.size.z) * s;
@@ -60,6 +65,8 @@ namespace Unscrew.Game
             if (Detached) return;
             Detached = true;
             StopShake();
+            SetDimmed(false);
+            SetPulse(1f);
             _collider.enabled = false;
             transform.SetParent(parent, true);
         }
@@ -67,6 +74,8 @@ namespace Unscrew.Game
         /// <summary>QA aid: dims the bolt (blocked) or restores its palette colors.</summary>
         public void SetDimmed(bool dimmed)
         {
+            if (_dimmed == dimmed) return;
+            _dimmed = dimmed;
             var mats = _renderer.sharedMaterials;
             for (int i = 0; i < mats.Length; i++)
             {
@@ -75,6 +84,12 @@ namespace Unscrew.Game
                 block.SetColor(BaseColorId, mats[i].GetColor(BaseColorId) * 0.25f);
                 _renderer.SetPropertyBlock(block, i);
             }
+        }
+
+        /// <summary>Scales the mesh (not the root, which the tray layout relies on): drill target pulse.</summary>
+        public void SetPulse(float scale)
+        {
+            if (_meshT != null) _meshT.localScale = _meshScale * scale;
         }
 
         public void Shake()
