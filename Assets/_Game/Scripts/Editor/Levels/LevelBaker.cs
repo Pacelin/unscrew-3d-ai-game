@@ -204,8 +204,10 @@ namespace Unscrew.Editor.Levels
             public List<LevelValidator.HeadViolation> originalHeadViolations = new List<LevelValidator.HeadViolation>();
             /// <summary>headLift measurement for every bolt that violated rule 1 originally.</summary>
             public Dictionary<int, LevelValidator.LiftResult> lifts = new Dictionary<int, LevelValidator.LiftResult>();
-            /// <summary>Bolts whose lift was rejected (kept at the original position; need a manual override).</summary>
+            /// <summary>Bolts with no clean head position within LiftSearchMax bolt lengths (kept at the original position; expected empty).</summary>
             public List<int> liftFallbacks = new List<int>();
+            /// <summary>Bolts lifted although the lift breaks a plausibility check (bake-3 fallbacks, lifted by the designer's decision).</summary>
+            public List<int> forcedLifts = new List<int>();
             public List<string> brokenCycles = new List<string>();
             public int overridesApplied;
             public int blockedBolts;
@@ -288,6 +290,7 @@ namespace Unscrew.Editor.Levels
                             var lr = LevelValidator.ComputeHeadLift(g, owner, original);
                             result.lifts[b.id] = lr;
                             if (lr.fallbackReason != null) result.liftFallbacks.Add(b.id);
+                            if (lr.forcedReason != null) result.forcedLifts.Add(b.id);
                             def.bolts[b.id].headLift = lr.lift;
                             g = Shift(g, lr.lift);
                         }

@@ -115,17 +115,35 @@ namespace Unscrew.Editor.Levels
         /// <summary>Extra lift added on top of the measured minimum so the head clears the surface (world units).</summary>
         public static float LiftEpsilon = 0.015f;
 
+        /// <summary>The clean-position search first covers this many bolt lengths, then is extended up to <see cref="LiftSearchMax"/>.</summary>
+        public static float LiftSearchBase = 3f;
+        /// <summary>Upper bound of the extended search (bolt lengths). In practice it ends earlier: once the head leaves the owner's bounds it is outside.</summary>
+        public static float LiftSearchMax = 10f;
+        /// <summary>Lifts above this many bolt lengths are flagged "extreme" in the report.</summary>
+        public static float ExtremeLiftRatio = 2f;
+
         public sealed class LiftResult
         {
-            /// <summary>Lift to apply (0 when no violation or on fallback).</summary>
+            /// <summary>Lift to apply (0 when no violation or when no clean position exists at all).</summary>
             public float lift;
-            /// <summary>Measured minimal lift + epsilon (the value that would be applied without fallback); +inf if not found.</summary>
+            /// <summary>Measured minimal lift + epsilon; +inf if not found.</summary>
             public float required;
             /// <summary>Depth reported by <see cref="CheckHead"/> for the original position.</summary>
             public float reportedDepth;
-            /// <summary>Non-null when the lift was rejected and the bolt keeps its original (rule-1 failing) position.</summary>
+            /// <summary>Non-null only when no clean position was found within <see cref="LiftSearchMax"/> bolt lengths (bolt keeps its original position).</summary>
             public string fallbackReason;
+            /// <summary>
+            /// Non-null when the lift is applied although it breaks a plausibility check that used to reject it in bake 3
+            /// ("extended search", "lift > bolt length", "shaft not anchored"). Accepted by the designer's decision (option a).
+            /// </summary>
+            public string forcedReason;
+            /// <summary>The clean position was found beyond <see cref="LiftSearchBase"/> bolt lengths.</summary>
+            public bool extendedSearch;
+            /// <summary>The shaft still reaches the owner after the lift (<see cref="ShaftAnchored"/>).</summary>
+            public bool shaftAnchored;
             public float boltLength;
+            public float Ratio => boltLength > 0f ? lift / boltLength : 0f;
+            public bool Extreme => lift > boltLength * ExtremeLiftRatio;
         }
 
         static bool AllOutside(LevelBaker.BoltGeometry g, List<Collider> owner)
@@ -154,8 +172,9 @@ namespace Unscrew.Editor.Levels
         /// <summary>
         /// For a bolt that violates rule 1, measures the smallest outward shift along the axis that puts all head samples
         /// outside the owner (step search + bisection with the parity test) and adds <see cref="LiftEpsilon"/>.
-        /// The lift is rejected (fallback to 0) when it exceeds the bolt length or the shaft no longer reaches the owner
-        /// (<see cref="ShaftAnchored"/>; the head would float over empty space on a bare shaft).
+        /// The search covers <see cref="LiftSearchBase"/> bolt lengths and is extended up to <see cref="LiftSearchMax"/>
+        /// (it ends anyway once the head leaves the owner's bounds). The lift is always applied (designer's option a);
+        /// lifts longer than the bolt or leaving the shaft unanchored are only marked with <see cref="LiftResult.forcedReason"/>.
         /// </summary>
         public static LiftResult ComputeHeadLift(LevelBaker.BoltGeometry g, List<Collider> owner, HeadViolation violation)
         {
@@ -163,7 +182,7 @@ namespace Unscrew.Editor.Levels
             if (violation == null) return r;
 
             float step = Mathf.Max(0.01f, g.headHeight * 0.1f);
-            float maxSearch = g.length * 3f;
+            float maxSearch = g.length * LiftSearchMax;
             float found = float.PositiveInfinity;
             for (float t = step; t <= maxSearch + 1e-4f; t += step)
             {
@@ -180,20 +199,22 @@ namespace Unscrew.Editor.Levels
             if (float.IsPositiveInfinity(found))
             {
                 r.required = float.PositiveInfinity;
-                r.fallbackReason = $"no clear position within {maxSearch.ToString("0.00", CultureInfo.InvariantCulture)} (3x bolt length)";
+                r.fallbackReason = $"no clear position within {maxSearch.ToString("0.00", CultureInfo.InvariantCulture)} ({LiftSearchMax:0}x bolt length)";
                 return r;
             }
             float lift = Mathf.Ceil((found + LiftEpsilon) * 1000f) / 1000f;
+            // Epsilon could put the head into another wall of a non-convex owner: nudge further until it is clean.
+            for (int guard = 0; guard < 200 && !AllOutside(LevelBaker.Shift(g, lift), owner); guard++)
+                lift = Mathf.Ceil((lift + step) * 1000f) / 1000f;
             r.required = lift;
-            var lifted = LevelBaker.Shift(g, lift);
-            if (lift > g.length)
-                r.fallbackReason = "lift > bolt length";
-            else if (!ShaftAnchored(lifted, owner))
-                r.fallbackReason = "shaft does not reach the owner after the lift";
-            else if (!AllOutside(lifted, owner))
-                r.fallbackReason = "head re-enters the owner after epsilon";
-            else
-                r.lift = lift;
+            r.lift = lift;
+            r.extendedSearch = found > g.length * LiftSearchBase;
+            r.shaftAnchored = ShaftAnchored(LevelBaker.Shift(g, lift), owner);
+            var reasons = new List<string>();
+            if (r.extendedSearch) reasons.Add("extended search");
+            if (lift > g.length) reasons.Add("lift > bolt length");
+            if (!r.shaftAnchored) reasons.Add("shaft not anchored");
+            if (reasons.Count > 0) r.forcedReason = string.Join(", ", reasons);
             return r;
         }
 
@@ -300,15 +321,27 @@ namespace Unscrew.Editor.Levels
                         sb.AppendLine($"- L{r.number:00}: " + string.Join(", ", r.lifts.Where(kv => kv.Value.lift > 0f).OrderBy(kv => kv.Key).Select(kv => $"b{kv.Key} {F(kv.Value.lift)}")));
                 sb.AppendLine();
             }
+            var forced = results.SelectMany(r => r.forcedLifts.Select(id => (r.number, id, r.lifts[id]))).ToList();
+            sb.AppendLine($"Принудительный подъём (в бейке 3 — откат; решение геймдизайнера: поднимать всё равно): {forced.Count}, " +
+                          $"из них extreme (headLift > {ExtremeLiftRatio:0}× длины болта) — {forced.Count(x => x.Item3.Extreme)}.");
+            if (forced.Count > 0)
+            {
+                sb.AppendLine();
+                sb.AppendLine("| Уровень | Болт | headLift | Длина болта | headLift / длина | Extreme | Стержень во владельце | Глубина по отчёту | Почему раньше откат |");
+                sb.AppendLine("| ---: | ---: | ---: | ---: | ---: | :---: | :---: | ---: | --- |");
+                foreach (var x in forced)
+                    sb.AppendLine($"| {x.number} | {x.id} | {F(x.Item3.lift)} | {F(x.Item3.boltLength)} | {x.Item3.Ratio.ToString("0.00", CultureInfo.InvariantCulture)} | {(x.Item3.Extreme ? "**да**" : "")} | {(x.Item3.shaftAnchored ? "да" : "нет")} | {F(x.Item3.reportedDepth)} | {x.Item3.forcedReason} |");
+            }
+            sb.AppendLine();
             var fb = results.SelectMany(r => r.liftFallbacks.Select(id => (r.number, id, r.lifts[id]))).ToList();
-            sb.AppendLine($"Откат (lift отклонён, болт оставлен в исходной позиции, нужна ручная правка): {fb.Count}.");
+            sb.AppendLine($"Откат (чистой позиции нет в пределах {LiftSearchMax:0}× длины болта, болт в исходной позиции): {fb.Count}.");
             if (fb.Count > 0)
             {
                 sb.AppendLine();
-                sb.AppendLine("| Уровень | Болт | Нужный lift | Длина болта | Глубина по отчёту | Причина |");
-                sb.AppendLine("| ---: | ---: | ---: | ---: | ---: | --- |");
+                sb.AppendLine("| Уровень | Болт | Длина болта | Глубина по отчёту | Причина |");
+                sb.AppendLine("| ---: | ---: | ---: | ---: | --- |");
                 foreach (var x in fb)
-                    sb.AppendLine($"| {x.number} | {x.id} | {(float.IsPositiveInfinity(x.Item3.required) ? "∞" : F(x.Item3.required))} | {F(x.Item3.boltLength)} | {F(x.Item3.reportedDepth)} | {x.Item3.fallbackReason} |");
+                    sb.AppendLine($"| {x.number} | {x.id} | {F(x.Item3.boltLength)} | {F(x.Item3.reportedDepth)} | {x.Item3.fallbackReason} |");
             }
             sb.AppendLine();
 

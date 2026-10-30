@@ -233,7 +233,7 @@
             "id": 5,
             "ownerPartId": 5,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 0.934
         },
         {
             "id": 6,
@@ -656,7 +656,7 @@
             "id": 66,
             "ownerPartId": 18,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 0.933
         },
         {
             "id": 67,
