@@ -63,6 +63,12 @@ namespace Unscrew.Game
         /// <summary>A level started loading (intro transition). Arg: displayed level number.</summary>
         public event Action<int> OnLevelLoading;
 
+        /// <summary>
+        /// Pause menu open: taps and boosters are rejected and win/lose is not reported (the view is frozen by timeScale 0,
+        /// this flag also covers a session that ended on the frame the pause opened).
+        /// </summary>
+        public bool Paused { get; set; }
+
         /// <summary>Drill booster armed: the next bolt tap drills that bolt instead of unscrewing it.</summary>
         public bool DrillMode { get; private set; }
 
@@ -154,7 +160,7 @@ namespace Unscrew.Game
         /// <summary>Player tap on a bolt. Blocked bolts shake. In drill mode the tap picks the drill target.</summary>
         public bool TapBolt(int boltId)
         {
-            if (State != FlowState.Playing || Session.State != SessionState.Playing) return false;
+            if (Paused || State != FlowState.Playing || Session.State != SessionState.Playing) return false;
             if (Session.Board.IsRemoved(boltId)) return false;
             if (DrillMode) return DrillBolt(boltId);
             _events.Clear();
@@ -180,6 +186,7 @@ namespace Unscrew.Game
         /// </summary>
         public bool UseBooster(BoosterType type)
         {
+            if (Paused) return false;
             if (type == BoosterType.Drill)
             {
                 if (DrillMode) { SetDrillMode(false); return false; }
@@ -275,7 +282,7 @@ namespace Unscrew.Game
                 FinishLoading();
                 return;
             }
-            if (State != FlowState.Playing || Session == null) return;
+            if (Paused || State != FlowState.Playing || Session == null) return;
             if (Session.State == SessionState.Playing || !_presenter.IsIdle) return;
             SetDrillMode(false);
             if (Session.State == SessionState.Won)

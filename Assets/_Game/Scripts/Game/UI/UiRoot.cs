@@ -36,6 +36,8 @@ namespace Unscrew.Game
         [SerializeField] private float menuSpin = 14f;
 
         private readonly List<BoosterType> _unlocked = new List<BoosterType>();
+        /// <summary>Boosters unlocked by the last win whose popup has not been shown yet (QA #1: never lost).</summary>
+        private readonly List<BoosterType> _pendingUnlocks = new List<BoosterType>();
         private BoardInput _input;
         private bool _firstLoad = true;
 
@@ -56,6 +58,7 @@ namespace Unscrew.Game
         public UnlockPopup Unlock => unlock;
         public Onboarding Onboarding => onboarding;
         public TransitionCurtain Curtain => curtain;
+        public bool Paused => Flow != null && Flow.Paused;
 
         /// <summary>A popup or full screen is over the board (onboarding hides).</summary>
         public bool AnyPopupOpen => win.IsOpen || lose.IsOpen || shop.IsOpen || settings.IsOpen || unlock.IsOpen || ad.IsOpen;
@@ -98,7 +101,7 @@ namespace Unscrew.Game
             flow.OnLevelLoading += OnLevelLoading;
             flow.OnLevelStarted += _ => { player.Continue.ResetForLevel(); hud.Refresh(); curtain.Reveal(); };
             flow.OnMove += hud.Refresh;
-            flow.OnDrillModeChanged += _ => hud.Refresh();
+            flow.OnDrillModeChanged += on => { hud.Refresh(); _input.VisibleBoltsOnly = on; };
             flow.OnWin += OnWin;
             flow.OnLose += _ =>
             {
@@ -110,6 +113,7 @@ namespace Unscrew.Game
             player.Inventory.Changed += (t, c) => hud.Refresh();
             player.Unlocks.Unlocked += _ => hud.Refresh();
             shop.Closed += () => { if (lose.IsOpen) lose.Refresh(); hud.Refresh(); };
+            settings.Closed += () => SetPaused(false);
         }
 
         // ---------- navigation ----------
@@ -143,33 +147,56 @@ namespace Unscrew.Game
             hud.Refresh();
         }
 
+        /// <summary>
+        /// Next level from the win screen (or QA skip). Closes every popup over the board, pause included; closing the win
+        /// screen mid coin-flight still shows the unlock popup (it opens under the level intro and stays after it).
+        /// </summary>
         public void NextLevel()
         {
-            win.Close();
-            unlock.Close();
+            CloseGamePopups();
             Flow.StartLevel(Player.Progress.CurrentLevel);
             hud.Refresh();
+            ShowPendingUnlocks();
         }
 
         public void RestartLevel()
         {
-            lose.Close();
-            win.Close();
+            CloseGamePopups();
             Flow.Restart();
+            ShowPendingUnlocks();
         }
 
         public void OpenShop() => shop.Open();
         public void OpenSettings() => settings.Show(false);
 
+        /// <summary>Pause: the board freezes (timeScale 0), taps and boosters are blocked, win/lose waits until resume.</summary>
         public void OpenPause()
         {
+            if (Mode != UiMode.Game) return;
             Flow.CancelDrill();
             settings.Show(true);
+            SetPaused(true);
+        }
+
+        private void SetPaused(bool paused)
+        {
+            Flow.Paused = paused;
+            Time.timeScale = paused ? 0f : 1f;
+            _input.enabled = !paused && Mode == UiMode.Game;
+        }
+
+        /// <summary>Popups that belong to the level being left (the unlock popup is kept: it must be seen).</summary>
+        private void CloseGamePopups()
+        {
+            foreach (var p in new UiPanel[] { win, lose, shop, settings }) p.Close();
+            SetPaused(false);
         }
 
         private void CloseAll()
         {
-            foreach (var p in new UiPanel[] { hud, win, lose, shop, settings, unlock, ad }) p.Close();
+            // unlock first: closing the win screen mid coin-flight reopens it with the pending boosters.
+            foreach (var p in new UiPanel[] { unlock, hud, win, lose, shop, settings, ad }) p.Close();
+            SetPaused(false);
         }
 
         private void SetBoardVisible(bool playing)
@@ -218,11 +245,18 @@ namespace Unscrew.Game
             hud.Refresh();
             _unlocked.Clear();
             int reward = Player.CompleteLevel(Flow.IsHard, _unlocked);
+            _pendingUnlocks.AddRange(_unlocked);
             Settings.Vibrate(40);
-            win.Show(level, Flow.IsHard, reward, Player.Wallet.Coins, () =>
-            {
-                if (_unlocked.Count > 0) unlock.Show(_unlocked, Player.Config.freeBoostersOnUnlock, null);
-            });
+            // After the coins land, or as soon as the win screen closes (fast Next): see WinScreen.Close.
+            win.Show(level, Flow.IsHard, reward, Player.Wallet.Coins, ShowPendingUnlocks);
+        }
+
+        private void ShowPendingUnlocks()
+        {
+            if (_pendingUnlocks.Count == 0) return;
+            var types = new List<BoosterType>(_pendingUnlocks);
+            _pendingUnlocks.Clear();
+            unlock.Show(types, Player.Config.freeBoostersOnUnlock, null);
         }
 
         public void ContinueWithBooster()

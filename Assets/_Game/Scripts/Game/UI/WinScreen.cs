@@ -31,7 +31,10 @@ namespace Unscrew.Game
             coinTemplate.gameObject.SetActive(false);
         }
 
-        /// <summary><paramref name="onFlown"/> runs after the coins landed (unlock popup).</summary>
+        /// <summary>
+        /// <paramref name="onFlown"/> runs after the coins landed (unlock popup) - or right away when the screen is closed
+        /// before that (fast "Next level"): the callback is never lost.
+        /// </summary>
         public void Show(int levelNumber, bool hard, int reward, int coinsAfter, Action onFlown)
         {
             Open();
@@ -43,6 +46,21 @@ namespace Unscrew.Game
             coins.Hold(coinsAfter - reward);
             _onFlown = onFlown;
             StartCoroutine(FlyCoins(reward));
+        }
+
+        /// <summary>Closing mid-flight skips the coin animation: the counter shows the credited balance and the callback runs.</summary>
+        public override void Close()
+        {
+            var cb = _onFlown;
+            _onFlown = null;
+            if (cb != null)
+            {
+                StopAllCoroutines();
+                foreach (var c in _pool) if (c != null) c.gameObject.SetActive(false);
+                coins.CountUp(0f);
+            }
+            base.Close();
+            cb?.Invoke();
         }
 
         private IEnumerator FlyCoins(int reward)
