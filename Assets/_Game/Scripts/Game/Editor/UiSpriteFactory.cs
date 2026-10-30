@@ -264,6 +264,15 @@ namespace Unscrew.Game.Editor
                 ras.Fill(p => RoundBox(p, V(92, 22), V(40, 16), 8), navy);
                 ras.Fill(p => RoundBox(p, V(92, 24), V(34, 10), 6), C.Primary);
             }, Vector4.zero, new Vector2(70f / 160f, 194f / 200f));
+            // Vertical fade (opaque at the bottom): end of a scrolling list, tinted with the screen background.
+            Save("fade_up", 4, 64, ras =>
+            {
+                for (int y = 0; y < ras.H; y++)
+                {
+                    float k = 1f - Mathf.SmoothStep(0f, 1f, (y + 0.5f) / ras.H);
+                    for (int x = 0; x < ras.W; x++) ras.Px[y * ras.W + x] = new Color(1f, 1f, 1f, k);
+                }
+            }, Vector4.zero);
             Save("arrow_down", 64, 40, ras => ras.Fill(p => Poly(p, V(4, 38), V(60, 38), V(32, 4)) - 2f, white), Vector4.zero);
             Save("confetti", 16, 24, ras => ras.Fill(p => RoundBox(p, V(8, 12), V(7, 11), 3), white), Vector4.zero);
             Icon("bolt_icon", 36, 160, s =>

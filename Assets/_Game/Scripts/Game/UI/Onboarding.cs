@@ -31,6 +31,7 @@ namespace Unscrew.Game
         private bool _tutorialDone;
         private bool[] _tipSeen;
         private int _tipTextType = -1;
+        private float _tutorialBubbleHeight;
 
         public bool TutorialActive { get; private set; }
         public BoosterType? ActiveTip { get; private set; }
@@ -42,6 +43,7 @@ namespace Unscrew.Game
             _tipSeen = new bool[BoosterInventory.TypeCount];
             for (int i = 0; i < _tipSeen.Length; i++) _tipSeen[i] = PlayerPrefs.GetInt(TipKeyPrefix + (BoosterType)i, 0) == 1;
             group.blocksRaycasts = false;
+            _tutorialBubbleHeight = bubble.sizeDelta.y;
             group.interactable = false;
             Hide();
         }
@@ -68,7 +70,10 @@ namespace Unscrew.Game
             if (_root == null) return;
             _time += Time.unscaledDeltaTime;
             var flow = _root.Flow;
-            bool canShow = _root.Mode == UiMode.Game && flow.State == FlowState.Playing && flow.Session != null && !_root.AnyPopupOpen;
+            // Hidden under popups/pause, while the drill is armed (its own tooltip sits in the same spot, QA #5) and while a
+            // toast is up (same spot; the toast is drawn above, QA #3).
+            bool canShow = _root.Mode == UiMode.Game && flow.State == FlowState.Playing && flow.Session != null && !_root.AnyPopupOpen
+                           && !flow.DrillMode && !flow.Paused && !_root.Toast.gameObject.activeSelf;
             TutorialActive = false;
             ActiveTip = null;
             if (!canShow) { Hide(); return; }
@@ -81,6 +86,8 @@ namespace Unscrew.Game
                 return;
             }
 
+            // Booster tips fold away after a few moves so they don't sit over the model all level (back next level until used).
+            if (flow.Session.MovesMade >= UiTokens.Onboarding.TipMoves) { Hide(); return; }
             for (int i = 0; i < _tipSeen.Length; i++)
             {
                 var type = (BoosterType)i;
@@ -113,6 +120,7 @@ namespace Unscrew.Game
             // Bubble sits just above the booster panel (the toast spot), in the content frame.
             bubble.anchorMin = bubble.anchorMax = new Vector2(0.5f, 0f);
             bubble.anchoredPosition = new Vector2(0f, UiTokens.Onboarding.TutorialBottom);
+            bubble.sizeDelta = new Vector2(bubble.sizeDelta.x, _tutorialBubbleHeight);
             bubbleArrow.gameObject.SetActive(false);
         }
 
@@ -150,17 +158,20 @@ namespace Unscrew.Game
             SetVisible(true);
             var corners = button.position;
             float scale = button.lossyScale.y;
-            // Hand above the button pointing down at it, bubble above the hand.
-            PlaceHand(corners + new Vector3(0f, UiTokens.Onboarding.TipHandLift * scale, 0f), true);
+            // Fingertip on the button (the hand covers the panel, not the model), like the level 1 hand on a bolt.
+            PlaceHand(corners + new Vector3(0f, UiTokens.Onboarding.TipHandLift * scale, 0f), false);
             if (_tipTextType != (int)type)
             {
                 _tipTextType = (int)type;
-                SetText("New: " + BoosterInfo.Name(type) + "!\n" + BoosterInfo.Description(type));
+                SetText("New: " + BoosterInfo.Name(type) + "! Tap it to use");
             }
+            // Bubble right above the booster panel, kept inside the content frame (QA #4), arrow down at the button.
             bubble.anchorMin = bubble.anchorMax = new Vector2(0.5f, 0f);
+            // One line (the unlock popup already explained it): a low bubble that hides as little of the model as possible.
+            bubble.sizeDelta = new Vector2(bubble.sizeDelta.x, UiTokens.Onboarding.TipHeight);
             var frame = (RectTransform)bubble.parent;
             float x = frame.InverseTransformPoint(corners).x - frame.rect.width * 0.5f;
-            float maxX = UiTokens.Onboarding.TipMaxX;
+            float maxX = Mathf.Max(0f, frame.rect.width * 0.5f - UiTokens.Onboarding.TipSideInset - bubble.rect.width * 0.5f);
             bubble.anchoredPosition = new Vector2(Mathf.Clamp(x, -maxX, maxX), UiTokens.Onboarding.TipBottom);
             bubbleArrow.gameObject.SetActive(true);
             var local = bubble.InverseTransformPoint(corners);

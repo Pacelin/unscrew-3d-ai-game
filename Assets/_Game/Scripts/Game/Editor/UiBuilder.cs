@@ -627,9 +627,10 @@ namespace Unscrew.Game.Editor
             var coins = CoinPill("Coins", top, false);
             Place(coins.transform, Vector2.one, Vector2.one, Vector2.zero, new Vector2(TB.CoinPillWidthNoPlus, TB.PillHeight));
 
-            // Grid in a scroll view that ends above the toast spot (the toast never covers a card).
+            // Grid in a scroll view down to the frame bottom: the next row shows under a soft fade (it reads as "scroll"),
+            // and the bottom padding lets the last row scroll fully clear of the toast spot (QA #9).
             var viewport = Node("Viewport", frame);
-            Stretch(viewport, Z.Edge, UiTokens.Toast.Height + SH.ToastGap, Z.Edge, SH.GridTop);
+            Stretch(viewport, Z.Edge, 0f, Z.Edge, SH.GridTop);
             viewport.gameObject.AddComponent<RectMask2D>();
             var hit = viewport.gameObject.AddComponent<Image>();
             hit.color = Color.clear;
@@ -643,7 +644,7 @@ namespace Unscrew.Game.Editor
             grid.spacing = new Vector2(SH.CardGap, SH.CardGap);
             grid.constraint = GridLayoutGroup.Constraint.FixedColumnCount;
             grid.constraintCount = 2;
-            grid.padding = new RectOffset(0, 0, 0, Mathf.RoundToInt(SH.CardEdge + S.X05));
+            grid.padding = new RectOffset(0, 0, 0, Mathf.RoundToInt(SH.ContentPaddingBottom));
             Fit(content, false, true);
             var scroll = viewport.gameObject.AddComponent<ScrollRect>();
             scroll.content = content;
@@ -651,6 +652,13 @@ namespace Unscrew.Game.Editor
             scroll.horizontal = false;
             scroll.movementType = ScrollRect.MovementType.Elastic;
             scroll.scrollSensitivity = S.X3;
+            var fade = Img("Fade", viewport, Spr("fade_up"), C.Bg);
+            fade.type = Image.Type.Simple;
+            fade.preserveAspect = false;
+            fade.raycastTarget = false;
+            Place(fade.rectTransform, Vector2.zero, new Vector2(0.5f, 0f), Vector2.zero, new Vector2(0f, SH.FadeHeight));
+            fade.rectTransform.anchorMax = new Vector2(1f, 0f);
+            fade.rectTransform.sizeDelta = new Vector2(0f, SH.FadeHeight);
 
             var card = BuildShopCard(content);
             Set(shop, "closeButton", back);
@@ -750,6 +758,10 @@ namespace Unscrew.Game.Editor
         {
             var layer = Node("ToastLayer", root);
             Stretch(layer);
+            // Own canvas: above the onboarding layer and every panel, below the transition curtain (QA #3).
+            var canvas = layer.gameObject.AddComponent<Canvas>();
+            canvas.overrideSorting = true;
+            canvas.sortingOrder = UiTokens.Toast.SortingOrder;
             var frame = Frame(layer);
             var pill = Pill("Toast", frame, C.Ink, Color.clear, 0f, UiTokens.Toast.Height, UiTokens.Toast.Padding, 0f, true);
             Place(pill, new Vector2(0.5f, 0f), new Vector2(0.5f, 0f), Vector2.zero, new Vector2(0f, UiTokens.Toast.Height));
