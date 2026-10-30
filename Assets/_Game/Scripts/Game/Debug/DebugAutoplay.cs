@@ -80,6 +80,7 @@ namespace Unscrew.Game
         private static IEnumerator PlayBad(GameFlow flow, int maxMoves)
         {
             IsRunning = true;
+            while (flow.State == FlowState.Loading) yield return null;
             Anim.Speed = SpeedMultiplier;
             var accessible = new System.Collections.Generic.List<int>();
             var probeAccessible = new System.Collections.Generic.List<int>();
@@ -142,6 +143,7 @@ namespace Unscrew.Game
         private static IEnumerator Play(GameFlow flow, int maxMoves)
         {
             IsRunning = true;
+            while (flow.State == FlowState.Loading) yield return null;
             Anim.Speed = SpeedMultiplier;
             var policy = new GreedyPolicy();
             int moves = 0;
