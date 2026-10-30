@@ -42,8 +42,9 @@ namespace Unscrew.Game.Editor
             var boxMat = EnsureLit(MaterialsDir + "/Box.mat", Color.white, 0.62f);
             var slotMat = EnsureLit(MaterialsDir + "/BoxSlot.mat", new Color(0.12f, 0.13f, 0.2f), 0.25f);
             var rimMat = EnsureLit(MaterialsDir + "/BoxRim.mat", Color.white, 0.7f);
-            var holeMat = EnsureLit(MaterialsDir + "/Hole.mat", new Color(0.17f, 0.2f, 0.32f), 0.3f);
-            var holeRimMat = EnsureLit(MaterialsDir + "/HoleRim.mat", new Color(0.93f, 0.95f, 1f), 0.7f);
+            // Hole cup / ring colors from the UI spec (UiTokens: hole #2A3444, ring #9DB1C7).
+            var holeMat = EnsureLit(MaterialsDir + "/Hole.mat", UiTokens.Colors.Hole, 0.3f);
+            var holeRimMat = EnsureLit(MaterialsDir + "/HoleRim.mat", UiTokens.Colors.HoleRing, 0.7f);
             var panelMat = EnsureLit(MaterialsDir + "/TrayPanel.mat", new Color(0.97f, 0.98f, 1f), 0.5f);
 
             var meshes = BuildMeshes();
@@ -231,16 +232,17 @@ namespace Unscrew.Game.Editor
             return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
         }
 
-        /// <summary>Sky-blue vertical gradient, a soft light spot behind the model and a subtle vignette.</summary>
+        /// <summary>
+        /// UI spec background #D6E8F7 (UiTokens.Colors.Bg) with a very soft light spot behind the model and a faint vignette,
+        /// so the flat mockup color still gives the 3D model some depth.
+        /// </summary>
         private static Color BackgroundPixel(float u, float v)
         {
-            var top = new Color(0.55f, 0.77f, 1f);
-            var bottom = new Color(0.86f, 0.93f, 1f);
-            var c = Color.Lerp(bottom, top, Mathf.SmoothStep(0f, 1f, v));
-            float glow = Mathf.Exp(-(Sq((u - 0.5f) * 1.6f) + Sq((v - 0.42f) * 1.4f)) * 4f);
-            c = Color.Lerp(c, Color.white, glow * 0.28f);
+            var c = UiTokens.Colors.Bg;
+            float glow = Mathf.Exp(-(Sq((u - 0.5f) * 1.6f) + Sq((v - 0.45f) * 1.4f)) * 4f);
+            c = Color.Lerp(c, Color.white, glow * 0.12f);
             float vig = Sq(u - 0.5f) * 1.3f + Sq(v - 0.5f) * 0.9f;
-            c *= 1f - Mathf.Clamp01(vig) * 0.28f;
+            c *= 1f - Mathf.Clamp01(vig) * 0.06f;
             c.a = 1f;
             return c;
         }
@@ -349,7 +351,7 @@ namespace Unscrew.Game.Editor
             cam.nearClipPlane = 0.3f;
             cam.farClipPlane = 500f;
             cam.clearFlags = CameraClearFlags.SolidColor;
-            cam.backgroundColor = new Color(0.7f, 0.84f, 1f);
+            cam.backgroundColor = UiTokens.Colors.Bg;
             for (int i = cam.transform.childCount - 1; i >= 0; i--)
                 if (cam.transform.GetChild(i).name == "Background") Object.DestroyImmediate(cam.transform.GetChild(i).gameObject);
             BuildBackground(cam, bgMat);

@@ -5,19 +5,15 @@ using UnityEngine;
 namespace Unscrew.Game
 {
     /// <summary>
-    /// Boxes row (top) and buffer holes (below) as 3D objects in camera space at a fixed distance,
-    /// laid out in viewport fractions so they stay above the model on any portrait aspect.
+    /// Boxes row (top) and buffer holes (below) as 3D objects in camera space at a fixed distance, placed in the
+    /// gameplay zones of the UI spec (UiLayout: boxes 3 x 156 design px with gap 16, holes 52 design px with gap 12),
+    /// so they line up with the HUD on every aspect ratio and safe area.
     /// </summary>
     public sealed class TrayView : MonoBehaviour
     {
         [SerializeField] private float distance = 10f;
-        [SerializeField] private float boxRowY = 0.855f;
-        [SerializeField] private float holeRowY = 0.755f;
-        [SerializeField] private float boxWidthFraction = 0.27f;
-        [SerializeField] private float boxGapFraction = 0.045f;
-        [SerializeField] private float holeRowWidthFraction = 0.9f;
-        [Tooltip("Box width cap as a fraction of the view height (wide screens like 3:4 keep 9:16 box size).")]
-        [SerializeField] private float boxWidthMaxOfHeight = 0.152f;
+        [Tooltip("Diameter of the dark cup of Hole.prefab at scale 1 (GameSceneBuilder: HoleCup radius 0.46).")]
+        [SerializeField] private float holeCupDiameter = 0.92f;
         [SerializeField] private float warningPulseSpeed = 9f;
 
         private Camera _cam;
@@ -29,9 +25,9 @@ namespace Unscrew.Game
         private float _boxWidth;
         private float _holeStep;
         private float _lastAspect;
-        private Transform _panel;
-        private Mesh _panelMesh;
-        private int _panelHoles = -1;
+        private UiLayout _layout;
+        private bool _hasLayout;
+        private float _holeSize;
         private bool _warning;
         private float _warnTime;
 
@@ -69,10 +65,6 @@ namespace Unscrew.Game
             for (int i = transform.childCount - 1; i >= 0; i--) Destroy(transform.GetChild(i).gameObject);
             _boxes = new BoxVisual[0];
             _holes.Clear();
-            _panel = null;
-            if (_panelMesh != null) Destroy(_panelMesh);
-            _panelMesh = null;
-            _panelHoles = -1;
             _warning = false;
         }
 
@@ -113,10 +105,8 @@ namespace Unscrew.Game
 
         public Vector3 BoxLocal(int slot)
         {
-            int n = Mathf.Max(1, _boxes.Length);
-            float step = _boxWidth + boxGapFraction * 2f * _halfW;
-            float x = (slot - (n - 1) * 0.5f) * step;
-            return new Vector3(x, ViewportToLocalY(boxRowY), 0f);
+            var r = _layout.BoxColumn(slot, Mathf.Max(1, _boxes.Length));
+            return new Vector3(CanvasToLocalX(r.center.x), CanvasToLocalY(r.center.y), 0f);
         }
 
         public Vector3 OffscreenRight(int slot) => new Vector3(_halfW + _boxWidth, BoxLocal(slot).y, 0f);
@@ -131,7 +121,7 @@ namespace Unscrew.Game
 
         private void LateUpdate()
         {
-            if (_cam != null && !Mathf.Approximately(_cam.aspect, _lastAspect))
+            if (_cam != null && (!Mathf.Approximately(_cam.aspect, _lastAspect) || !UiLayout.Current.Equals(_layout)))
             {
                 ComputeMetrics();
                 Relayout();
@@ -161,14 +151,17 @@ namespace Unscrew.Game
         private void ComputeMetrics()
         {
             _lastAspect = _cam.aspect;
+            _layout = UiLayout.Current;
+            _hasLayout = true;
             _halfH = distance * Mathf.Tan(_cam.fieldOfView * 0.5f * Mathf.Deg2Rad);
             _halfW = _halfH * _cam.aspect;
-            _boxWidth = Mathf.Min(boxWidthFraction * 2f * _halfW, boxWidthMaxOfHeight * 2f * _halfH);
+            _boxWidth = CanvasToWorld(_layout.BoxColumn(0, 3).width);
         }
 
         private void Relayout()
         {
             if (_cam == null) return;
+            if (!_hasLayout) ComputeMetrics();
             for (int i = 0; i < _boxes.Length; i++)
             {
                 if (_boxes[i] == null) continue;
@@ -177,52 +170,25 @@ namespace Unscrew.Game
             }
             int n = _holes.Count;
             if (n == 0) return;
-            _holeStep = Mathf.Min(_boxWidth * 0.38f, holeRowWidthFraction * 2f * _halfW / n);
-            float size = _holeStep * 0.82f;
-            float y = ViewportToLocalY(holeRowY);
+            _layout.HoleMetrics(n, out float diameter, out float step);
+            _holeStep = CanvasToWorld(step);
+            _holeSize = CanvasToWorld(diameter);
+            float scale = _holeSize / holeCupDiameter;
+            var row = _layout.HoleRow;
+            float y = CanvasToLocalY(row.center.y);
+            float cx = CanvasToLocalX(row.center.x);
             for (int i = 0; i < n; i++)
             {
                 var t = _holes[i].transform;
-                t.localScale = Vector3.one * size;
-                t.localPosition = new Vector3((i - (n - 1) * 0.5f) * _holeStep, y, 0f);
+                t.localScale = Vector3.one * scale;
+                t.localPosition = new Vector3(cx + (i - (n - 1) * 0.5f) * _holeStep, y, 0f);
             }
-            LayoutPanel(n, y);
         }
 
-        /// <summary>Rounded plate behind the hole row; the mesh is rebuilt only when the hole count or size changes.</summary>
-        private void LayoutPanel(int n, float y)
-        {
-            if (_catalog == null || _catalog.trayPanelMaterial == null) return;
-            if (_panel == null)
-            {
-                var go = new GameObject("HolePanel", typeof(MeshFilter), typeof(MeshRenderer));
-                _panel = go.transform;
-                _panel.SetParent(transform, false);
-                var r = go.GetComponent<MeshRenderer>();
-                r.sharedMaterial = _catalog.trayPanelMaterial;
-                r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-                r.receiveShadows = false;
-            }
-            if (_panelHoles != n || !Mathf.Approximately(_lastAspect, _panelAspect))
-            {
-                _panelHoles = n;
-                _panelAspect = _lastAspect;
-                if (_panelMesh != null) Destroy(_panelMesh);
-                float h = _holeStep * 1.12f;
-                float w = n * _holeStep + _holeStep * 0.3f;
-                _panelMesh = ProceduralMesh.RoundedSlab("HolePanel", w, h, h * 0.25f, h * 0.5f, h * 0.12f, 8);
-                _panel.GetComponent<MeshFilter>().sharedMesh = _panelMesh;
-            }
-            _panel.localPosition = new Vector3(0f, y, _holeStep * 0.12f);
-        }
+        // Canvas units (UiLayout) -> local units of this camera-space plane at `distance`.
+        private float CanvasToWorld(float units) => units / _layout.Canvas.x * 2f * _halfW;
+        private float CanvasToLocalX(float x) => (x / _layout.Canvas.x * 2f - 1f) * _halfW;
+        private float CanvasToLocalY(float y) => (y / _layout.Canvas.y * 2f - 1f) * _halfH;
 
-        private float _panelAspect;
-
-        /// <summary>Rows are placed in viewport fractions of the safe area (so a notch never covers the boxes).</summary>
-        private float ViewportToLocalY(float v)
-        {
-            float y = LevelView.SafeViewport(new Rect(0f, v, 1f, 0f)).y;
-            return (2f * y - 1f) * _halfH;
-        }
     }
 }

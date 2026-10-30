@@ -6,14 +6,12 @@ namespace Unscrew.Game
 {
     /// <summary>
     /// Instantiates Level_XX.prefab under a rotatable pivot, maps parts/bolts by nodePath,
-    /// recolors bolts from the layout and fits the model into the lower part of the screen.
+    /// recolors bolts from the layout and fits the model into the UI spec's model zone (UiLayout).
     /// </summary>
     public sealed class LevelView : MonoBehaviour
     {
         public const string BoltLayerName = "Bolt";
 
-        [Tooltip("Viewport rect (x, y, w, h) inside the safe area the model must fit into (below the tray, above the booster bar).")]
-        [SerializeField] private Rect modelViewport = new Rect(0.03f, 0.172f, 0.94f, 0.528f);
         [Tooltip("Negative = top of the model tilted toward the camera (seen slightly from above).")]
         [SerializeField] private float startPitch = -15f;
         [SerializeField] private float minPitch = -60f;
@@ -26,6 +24,18 @@ namespace Unscrew.Game
         private float _yaw;
         private float _pitch;
         private Vector3 _extents;
+
+        private bool _menuFraming;
+
+        /// <summary>
+        /// The model fits the menu turntable zone instead of the gameplay zone (between the holes and the booster panel).
+        /// Both come from UiLayout, i.e. the UI spec; setting it refits.
+        /// </summary>
+        public bool MenuFraming
+        {
+            get => _menuFraming;
+            set { if (_menuFraming == value) return; _menuFraming = value; FitCamera(); }
+        }
 
         /// <summary>Degrees per second of idle yaw (main menu showcase); 0 while playing.</summary>
         public float AutoSpin { get; set; }
@@ -148,7 +158,8 @@ namespace Unscrew.Game
         {
             if (_pivot == null || _cam == null) return;
             _fittedAspect = _cam.aspect;
-            var vp = SafeViewport(modelViewport);
+            _fittedLayout = UiLayout.Current;
+            var vp = _fittedLayout.ToViewport(_menuFraming ? _fittedLayout.MenuModel : _fittedLayout.GameModel);
             float tanV = Mathf.Tan(_cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * vp.height;
             float tanH = Mathf.Tan(_cam.fieldOfView * 0.5f * Mathf.Deg2Rad) * _cam.aspect * vp.width;
             // Fit the axis-aligned extents rather than the bounding sphere (which makes bolts tiny):
@@ -164,15 +175,7 @@ namespace Unscrew.Game
         }
 
         private float _fittedAspect;
-
-        /// <summary>Maps a full-screen viewport rect into the vertical safe area (notches, gesture bar).</summary>
-        public static Rect SafeViewport(Rect r)
-        {
-            if (Screen.height <= 0) return r;
-            var safe = Screen.safeArea;
-            float bottom = safe.yMin / Screen.height, top = safe.yMax / Screen.height;
-            return new Rect(r.x, bottom + r.y * (top - bottom), r.width, r.height * (top - bottom));
-        }
+        private UiLayout _fittedLayout;
 
         /// <summary>Drill target mode: drillable bolts pulse, the rest are dimmed. null switches it off.</summary>
         public void SetDrillHighlight(GameFlow flow)
@@ -208,7 +211,7 @@ namespace Unscrew.Game
         {
             if (_pivot != null && AutoSpin != 0f) Orbit(AutoSpin * Time.deltaTime, 0f);
             // Rotation / resize of the window: keep the model in its viewport rect.
-            if (_cam != null && _pivot != null && !Mathf.Approximately(_cam.aspect, _fittedAspect)) FitCamera();
+            if (_cam != null && _pivot != null && (!Mathf.Approximately(_cam.aspect, _fittedAspect) || !UiLayout.Current.Equals(_fittedLayout))) FitCamera();
         }
 
         private void ApplyRotation()
