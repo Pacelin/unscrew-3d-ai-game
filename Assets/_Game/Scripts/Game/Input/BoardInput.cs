@@ -20,6 +20,12 @@ namespace Unscrew.Game
         [Tooltip("Degrees of pitch per full screen height of drag.")]
         [SerializeField] private float pitchPerScreen = 160f;
 
+        /// <summary>
+        /// Drill target mode: a tap picks the nearest bolt under the finger that faces the camera and is not hidden by a part
+        /// (the bolts that carry a gold ring), never one on the far side of the model. Rotating brings the others round.
+        /// </summary>
+        public bool VisibleBoltsOnly { get; set; }
+
         /// <summary>Raised with the bolt id under a tap.</summary>
         public event Action<int> BoltTapped;
 
@@ -28,6 +34,7 @@ namespace Unscrew.Game
         private Vector2 _pressPos;
         private Vector2 _lastPos;
         private int _boltMask;
+        private readonly RaycastHit[] _hits = new RaycastHit[16];
 
         private void Awake()
         {
@@ -67,9 +74,25 @@ namespace Unscrew.Game
         private void Tap(Vector2 screenPos)
         {
             var ray = cam.ScreenPointToRay(screenPos);
-            if (!Physics.Raycast(ray, out var hit, 1000f, _boltMask, QueryTriggerInteraction.Collide)) return;
-            var bolt = hit.collider.GetComponentInParent<BoltView>();
-            if (bolt != null && !bolt.Detached) BoltTapped?.Invoke(bolt.Id);
+            if (!VisibleBoltsOnly)
+            {
+                if (!Physics.Raycast(ray, out var hit, 1000f, _boltMask, QueryTriggerInteraction.Collide)) return;
+                var bolt = hit.collider.GetComponentInParent<BoltView>();
+                if (bolt != null && !bolt.Detached) BoltTapped?.Invoke(bolt.Id);
+                return;
+            }
+            int n = Physics.RaycastNonAlloc(ray, _hits, 1000f, _boltMask, QueryTriggerInteraction.Collide);
+            BoltView best = null;
+            float bestDist = float.MaxValue;
+            for (int i = 0; i < n; i++)
+            {
+                if (_hits[i].distance >= bestDist) continue;
+                var bolt = _hits[i].collider.GetComponentInParent<BoltView>();
+                if (bolt == null || bolt.Detached || !levelView.IsBoltVisible(bolt, cam)) continue;
+                best = bolt;
+                bestDist = _hits[i].distance;
+            }
+            if (best != null) BoltTapped?.Invoke(best.Id);
         }
 
         private static bool IsOverUi()

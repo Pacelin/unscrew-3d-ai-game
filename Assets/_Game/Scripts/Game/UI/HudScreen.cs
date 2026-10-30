@@ -71,7 +71,8 @@ namespace Unscrew.Game
             int used = 0;
             foreach (var b in level.Bolts)
             {
-                if (b == null || b.Detached || !flow.IsDrillable(b.Id)) continue;
+                // Only bolts the player can see: not on the far side of the model, not behind a part (QA #6).
+                if (b == null || b.Detached || !flow.IsDrillable(b.Id) || !level.IsBoltVisible(b, flow.Camera)) continue;
                 var head = b.transform.TransformPoint(b.HeadOffsetLocal);
                 var screen = flow.Camera.WorldToScreenPoint(head);
                 if (screen.z < 0f) continue;

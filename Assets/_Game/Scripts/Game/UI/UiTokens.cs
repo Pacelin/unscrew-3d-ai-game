@@ -163,6 +163,8 @@ namespace Unscrew.Game
             public const float PanelHeight = 320f;  // 160, bottom = frame bottom
             /// <summary>Below this the whole frame scales down (only very short screens).</summary>
             public const float MinModelHeight = 400f;
+            /// <summary>Clear space kept around the model's projected silhouette inside the model area (QA #7).</summary>
+            public const float ModelMargin = 24f;
             public const float MinFrameHeight = ModelTop + ModelBottom + MinModelHeight;
             // Main menu: turntable model 224-704 design px.
             public const float MenuModelTop = 400f;
@@ -300,6 +302,10 @@ namespace Unscrew.Game
             public const float BuyPlayIcon = 44f;        // 22
             public const float LockedText = 36f;         // 18
             public const float ToastGap = 32f;
+            /// <summary>Soft fade at the bottom of the scrolling grid: the cut row reads as "more below" (QA #9).</summary>
+            public const float FadeHeight = 160f;
+            /// <summary>Space under the last row so it scrolls fully clear of the toast spot.</summary>
+            public const float ContentPaddingBottom = Toast.Height + ToastGap + CardEdge;
             public const float TitleCenterX = 480f;      // between the back button and the coin pill
         }
 
@@ -311,6 +317,8 @@ namespace Unscrew.Game
             /// <summary>Bottom of the toast above the frame bottom, per screen: clear of the booster panel / menu buttons.</summary>
             public const float BottomShop = 0f;
             public const float BottomGame = Zone.ModelBottom;
+            /// <summary>Own canvas: above every panel and the onboarding layer (15), below the transition curtain (60). QA #3.</summary>
+            public const int SortingOrder = 50;
             public const float BottomMenu = Menu.ButtonHeight + Menu.RowGap + Menu.LevelPillHeight + Menu.RowGap;
         }
 
@@ -321,9 +329,16 @@ namespace Unscrew.Game
             public const float BubblePaddingX = 48f;
             public const float BubblePaddingY = 24f;
             public const float TutorialBottom = Zone.ModelBottom;
-            public const float TipBottom = 520f;
+            /// <summary>Booster tip bubble: right above the booster panel (same spot as the tutorial bubble and the toast).</summary>
+            public const float TipBottom = Zone.ModelBottom;
+            /// <summary>Fingertip above the booster button center (the hand covers the button, not the model).</summary>
             public const float TipHandLift = 40f;
-            public const float TipMaxX = 180f;
+            /// <summary>The bubble stays inside the content column: at least this far from the frame sides.</summary>
+            public const float TipSideInset = Zone.Edge;
+            /// <summary>The tip folds away after this many moves in a level (it comes back next level until the booster is used).</summary>
+            public const int TipMoves = 3;
+            /// <summary>Single-line tip bubble height (= the drill tooltip pill, Drill.dc.html).</summary>
+            public const float TipHeight = Drill.HintHeight;
             public const float Hand = 155f;
             public const float ArrowWidth = 56f;
             public const float ArrowHeight = 34f;

@@ -143,6 +143,34 @@ namespace Unscrew.Game
             }
         }
 
+        /// <summary>Head direction vs the direction to the camera above which a bolt counts as facing it (drill rings, QA #6).</summary>
+        public const float FacingThreshold = 0.15f;
+
+        private int _occluderMask = -2;
+
+        /// <summary>
+        /// The bolt head faces the camera (dot(bolt.forward, toCamera) &gt; <see cref="FacingThreshold"/>) and no attached part
+        /// lies between the head and the camera (raycast against the parts' MeshColliders; bolts are on their own layer).
+        /// </summary>
+        public bool IsBoltVisible(BoltView bolt, Camera cam)
+        {
+            if (bolt == null || bolt.Detached || cam == null) return false;
+            var head = bolt.transform.TransformPoint(bolt.HeadOffsetLocal);
+            var toCam = cam.transform.position - head;
+            float dist = toCam.magnitude;
+            if (dist < 1e-4f) return true;
+            toCam /= dist;
+            if (Vector3.Dot(bolt.transform.forward, toCam) <= FacingThreshold) return false;
+            if (_occluderMask == -2)
+            {
+                int boltLayer = LayerMask.NameToLayer(BoltLayerName);
+                _occluderMask = Physics.DefaultRaycastLayers & ~(boltLayer < 0 ? 0 : 1 << boltLayer);
+            }
+            // Start just above the head so the part the bolt sits in does not count.
+            float lift = Mathf.Max(0.02f, bolt.HeadSize * 0.6f);
+            return !Physics.Raycast(head + toCam * lift, toCam, dist - lift, _occluderMask, QueryTriggerInteraction.Ignore);
+        }
+
         public BoltView GetBolt(int id) => id >= 0 && id < Bolts.Length ? Bolts[id] : null;
 
         public void Orbit(float deltaYaw, float deltaPitch)
@@ -172,6 +200,69 @@ namespace Unscrew.Game
             float dist = Mathf.Max(halfW / tanH, halfH / tanV) + depth;
             var ray = _cam.ViewportPointToRay(new Vector3(vp.center.x, vp.center.y, 0f));
             _pivot.position = ray.GetPoint(dist);
+            FitProjected(vp);
+        }
+
+        /// <summary>
+        /// QA #7: the extents heuristic ignores perspective and the start pitch, so the near/low corners of some models
+        /// (L05, L18) reached into the booster panel. Refine with the real silhouette at the current pose: project the
+        /// corners of every mesh's local bounds, center that rect in the model area and back off until it fits with
+        /// <see cref="UiTokens.Zone.ModelMargin"/>. Never moves closer than the heuristic (rotation headroom stays).
+        /// </summary>
+        private void FitProjected(Rect vp)
+        {
+            var layout = _fittedLayout;
+            float mx = UiTokens.Zone.ModelMargin * layout.Scale / layout.Canvas.x;
+            float my = UiTokens.Zone.ModelMargin * layout.Scale / layout.Canvas.y;
+            var target = new Rect(vp.x + mx, vp.y + my, Mathf.Max(0.05f, vp.width - 2f * mx), Mathf.Max(0.05f, vp.height - 2f * my));
+            var camPos = _cam.transform.position;
+            var camFwd = _cam.transform.forward;
+            for (int iter = 0; iter < 12; iter++)
+            {
+                if (!ProjectedViewportRect(out var p)) return;
+                float k = Mathf.Max(p.width / target.width, p.height / target.height);
+                float depth = Vector3.Dot(_pivot.position - camPos, camFwd);
+                var from = _cam.ViewportToWorldPoint(new Vector3(p.center.x, p.center.y, depth));
+                var to = _cam.ViewportToWorldPoint(new Vector3(target.center.x, target.center.y, depth));
+                bool centered = (p.center - target.center).sqrMagnitude < 1e-6f;
+                if (k <= 1.0005f && centered) return;
+                _pivot.position += to - from;
+                // Apparent size ~ 1/depth: push the pivot back along its own sight line (keeps its viewport position).
+                if (k > 1.0005f) _pivot.position = camPos + (_pivot.position - camPos) * (1f + (k - 1f) * 1.05f);
+            }
+        }
+
+        private static readonly Vector3[] Corners = new Vector3[8];
+
+        /// <summary>Viewport rect of the attached model: corners of each mesh's local bounds (tighter than world AABBs).</summary>
+        private bool ProjectedViewportRect(out Rect rect)
+        {
+            rect = default;
+            if (_instance == null) return false;
+            float x0 = float.MaxValue, y0 = float.MaxValue, x1 = float.MinValue, y1 = float.MinValue;
+            foreach (var mf in _instance.GetComponentsInChildren<MeshFilter>())
+            {
+                var mesh = mf.sharedMesh;
+                var r = mf.GetComponent<Renderer>();
+                if (mesh == null || r == null || !r.enabled) continue;
+                var b = mesh.bounds;
+                var m = mf.transform.localToWorldMatrix;
+                int i = 0;
+                for (int sx = -1; sx <= 1; sx += 2)
+                for (int sy = -1; sy <= 1; sy += 2)
+                for (int sz = -1; sz <= 1; sz += 2)
+                    Corners[i++] = m.MultiplyPoint3x4(b.center + Vector3.Scale(b.extents, new Vector3(sx, sy, sz)));
+                foreach (var c in Corners)
+                {
+                    var v = _cam.WorldToViewportPoint(c);
+                    if (v.z <= 0f) continue;
+                    x0 = Mathf.Min(x0, v.x); x1 = Mathf.Max(x1, v.x);
+                    y0 = Mathf.Min(y0, v.y); y1 = Mathf.Max(y1, v.y);
+                }
+            }
+            if (x1 < x0) return false;
+            rect = Rect.MinMaxRect(x0, y0, x1, y1);
+            return true;
         }
 
         private float _fittedAspect;
