@@ -22,6 +22,23 @@ namespace Unscrew.Game
             return "DebugCapture: scheduled " + path;
         }
 
+        /// <summary>Captures once <paramref name="condition"/> holds, after <paramref name="delay"/> seconds (QA of timed UI).</summary>
+        public static string CaptureWhen(System.Func<bool> condition, float delay, string path)
+        {
+            var boot = GameBootstrap.Instance;
+            if (!Application.isPlaying || boot == null) return "DebugCapture: Play Mode only";
+            LastResult = "pending";
+            boot.StartCoroutine(WhenRoutine(condition, delay, path));
+            return "DebugCapture: armed " + path;
+        }
+
+        private static IEnumerator WhenRoutine(System.Func<bool> condition, float delay, string path)
+        {
+            while (!condition()) yield return null;
+            if (delay > 0f) yield return new WaitForSecondsRealtime(delay);
+            yield return CaptureRoutine(path);
+        }
+
         private static IEnumerator CaptureRoutine(string path)
         {
             yield return new WaitForEndOfFrame();

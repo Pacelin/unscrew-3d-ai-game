@@ -1,16 +1,14 @@
 using System.IO;
-using TMPro;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.EventSystems;
-using UnityEngine.UI;
 
 namespace Unscrew.Game.Editor
 {
     /// <summary>
     /// Reproducible setup of the stage-4 game: tray materials and prefabs, LevelCatalog asset,
-    /// and the Main.unity scene objects (camera, Game root, minimal uGUI HUD + overlay).
+    /// and the Main.unity scene objects (camera, Game root, EventSystem); the UI comes from <see cref="UiBuilder"/>.
     /// Menu "Unscrew/Build Game Scene" or <c>GameSceneBuilder.BuildAll()</c>.
     /// </summary>
     public static class GameSceneBuilder
@@ -185,12 +183,12 @@ namespace Unscrew.Game.Editor
             Set(input, "cam", cam);
             Set(input, "levelView", level);
 
-            var hud = BuildUi(out _);
+            var ui = UiBuilder.Build();
             Set(boot, "catalog", catalog);
             Set(boot, "mainCamera", cam);
             Set(boot, "presenter", presenter);
             Set(boot, "input", input);
-            Set(boot, "hud", hud);
+            Set(boot, "ui", ui);
 
             var es = new GameObject("EventSystem");
             es.AddComponent<EventSystem>();
@@ -198,112 +196,6 @@ namespace Unscrew.Game.Editor
 
             EditorSceneManager.MarkSceneDirty(scene);
             EditorSceneManager.SaveScene(scene);
-        }
-
-        private static GameHud BuildUi(out Canvas canvas)
-        {
-            var ui = new GameObject("UI", typeof(RectTransform));
-            canvas = ui.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            var scaler = ui.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = new Vector2(1080f, 1920f);
-            scaler.matchWidthOrHeight = 0.5f;
-            ui.AddComponent<GraphicRaycaster>();
-
-            var safe = Rect("SafeArea", ui.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            safe.gameObject.AddComponent<SafeAreaFitter>();
-
-            var levelText = Text("LevelText", safe, "Level 1", 60, FontStyles.Bold, new Color(0.14f, 0.2f, 0.29f), TextAlignmentOptions.Center);
-            Anchor(levelText.rectTransform, new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -110f), new Vector2(0f, -10f));
-
-            var debugText = Text("DebugText", safe, "", 26, FontStyles.Normal, new Color(0.25f, 0.3f, 0.38f, 0.85f), TextAlignmentOptions.BottomLeft);
-            Anchor(debugText.rectTransform, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(24f, 12f), new Vector2(-24f, 60f));
-
-            // Overlay covers the whole screen (outside the safe area too) and blocks board input.
-            var overlay = Rect("Overlay", ui.transform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            var dim = overlay.gameObject.AddComponent<Image>();
-            dim.color = new Color(0.05f, 0.08f, 0.14f, 0.6f);
-
-            var panel = Rect("Panel", overlay, new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f), new Vector2(-420f, -260f), new Vector2(420f, 260f));
-            var panelImg = panel.gameObject.AddComponent<Image>();
-            panelImg.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-            panelImg.type = Image.Type.Sliced;
-            panelImg.color = new Color(0.97f, 0.98f, 1f);
-
-            var title = Text("Title", panel, "Level complete!", 80, FontStyles.Bold, new Color(0.14f, 0.2f, 0.29f), TextAlignmentOptions.Center);
-            Anchor(title.rectTransform, new Vector2(0f, 0.5f), new Vector2(1f, 1f), new Vector2(20f, 0f), new Vector2(-20f, -20f));
-
-            // Row of buttons: a layout group keeps a single button (Restart on lose) centered.
-            var row = Rect("Buttons", panel, new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(20f, 50f), new Vector2(-20f, 190f));
-            var layout = row.gameObject.AddComponent<HorizontalLayoutGroup>();
-            layout.spacing = 40f;
-            layout.childAlignment = TextAnchor.MiddleCenter;
-            layout.childControlWidth = true;
-            layout.childControlHeight = true;
-            layout.childForceExpandWidth = false;
-            layout.childForceExpandHeight = false;
-            var restart = Button("RestartButton", row, "Restart", new Color(0.95f, 0.55f, 0.25f));
-            var next = Button("NextButton", row, "Next", new Color(0.27f, 0.72f, 0.38f));
-
-            var hud = ui.AddComponent<GameHud>();
-            Set(hud, "levelText", levelText);
-            Set(hud, "debugText", debugText);
-            Set(hud, "overlay", overlay.gameObject);
-            Set(hud, "overlayTitle", title);
-            Set(hud, "restartButton", restart);
-            Set(hud, "nextButton", next);
-            overlay.gameObject.SetActive(false);
-            return hud;
-        }
-
-        private static RectTransform Rect(string name, Transform parent, Vector2 aMin, Vector2 aMax, Vector2 oMin, Vector2 oMax)
-        {
-            var rt = new GameObject(name, typeof(RectTransform)).GetComponent<RectTransform>();
-            rt.SetParent(parent, false);
-            Anchor(rt, aMin, aMax, oMin, oMax);
-            return rt;
-        }
-
-        private static void Anchor(RectTransform rt, Vector2 aMin, Vector2 aMax, Vector2 oMin, Vector2 oMax)
-        {
-            rt.anchorMin = aMin;
-            rt.anchorMax = aMax;
-            rt.offsetMin = oMin;
-            rt.offsetMax = oMax;
-        }
-
-        private static TextMeshProUGUI Text(string name, Transform parent, string text, float size, FontStyles style, Color color, TextAlignmentOptions align)
-        {
-            var go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            var t = go.AddComponent<TextMeshProUGUI>();
-            t.text = text;
-            t.fontSize = size;
-            t.fontStyle = style;
-            t.color = color;
-            t.alignment = align;
-            t.raycastTarget = false;
-            t.enableWordWrapping = false;
-            t.overflowMode = TextOverflowModes.Overflow;
-            return t;
-        }
-
-        private static Button Button(string name, Transform parent, string label, Color color)
-        {
-            var go = new GameObject(name, typeof(RectTransform));
-            go.transform.SetParent(parent, false);
-            var img = go.AddComponent<Image>();
-            img.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
-            img.type = Image.Type.Sliced;
-            img.color = color;
-            var btn = go.AddComponent<Button>();
-            var le = go.AddComponent<LayoutElement>();
-            le.preferredWidth = 360f;
-            le.preferredHeight = 140f;
-            var t = Text("Label", go.transform, label, 56, FontStyles.Bold, Color.white, TextAlignmentOptions.Center);
-            Anchor(t.rectTransform, Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-            return btn;
         }
 
         private static void Set(Object target, string field, Object value)

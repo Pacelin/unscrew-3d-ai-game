@@ -1,0 +1,41 @@
+using TMPro;
+using UnityEngine;
+using UnityEngine.UI;
+
+namespace Unscrew.Game
+{
+    /// <summary>Settings (menu) and pause (in game: + Resume / Restart / Home). Toggles are saved in GameSettings.</summary>
+    public sealed class SettingsPopup : UiPanel
+    {
+        [SerializeField] private TMP_Text title;
+        [SerializeField] private ToggleSwitch sound;
+        [SerializeField] private ToggleSwitch vibration;
+        [SerializeField] private Button closeButton;
+        [SerializeField] private GameObject gameButtons;
+        [SerializeField] private Button resumeButton;
+        [SerializeField] private Button restartButton;
+        [SerializeField] private Button homeButton;
+
+        private GameSettings _settings;
+
+        public void Bind(UiRoot root)
+        {
+            _settings = root.Settings;
+            sound.Changed += v => _settings.SetSound(v);
+            vibration.Changed += v => _settings.SetVibration(v);
+            closeButton.onClick.AddListener(Close);
+            resumeButton.onClick.AddListener(Close);
+            restartButton.onClick.AddListener(() => { Close(); root.RestartLevel(); });
+            homeButton.onClick.AddListener(() => { Close(); root.ShowMenu(); });
+        }
+
+        public void Show(bool paused)
+        {
+            title.text = paused ? "Paused" : "Settings";
+            gameButtons.SetActive(paused);
+            sound.Set(_settings.Sound);
+            vibration.Set(_settings.Vibration);
+            Open();
+        }
+    }
+}
