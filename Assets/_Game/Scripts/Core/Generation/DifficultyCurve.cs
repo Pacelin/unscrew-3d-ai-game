@@ -38,6 +38,31 @@ namespace Unscrew.Core
             return e != TutorialLevel && e % HardEvery == 0;
         }
 
+        /// <summary>Target casual win rate of levels 2..4 (gentle start).</summary>
+        public const double EarlyTarget = 0.95;
+        /// <summary>Normal-level trend: TrendStart at level 5, minus TrendSlope per level (0.90 → ~0.51 at level 19).</summary>
+        public const double TrendStart = 0.90;
+        public const double TrendSlope = 0.028;
+        /// <summary>Hard levels sit this much below the trend.</summary>
+        public const double HardDrop = 0.20;
+        /// <summary>The level right after a hard one is this much easier than the trend.</summary>
+        public const double ReliefBonus = 0.04;
+
+        /// <summary>
+        /// Target win rate of a casual player (CasualPolicy) for a level; LayoutGenerator steers its layouts towards it.
+        /// 1 → 1.0 (tutorial), 2..4 → 0.95, then a linear decline; hard levels −0.20, the next level +0.04.
+        /// </summary>
+        public static double TargetCasualWinRate(int number)
+        {
+            int e = EffectiveLevel(number);
+            if (e == TutorialLevel) return 1.0;
+            if (e < HardEvery) return EarlyTarget;
+            double trend = TrendStart - TrendSlope * (e - HardEvery);
+            if (IsHardLevel(e)) trend -= HardDrop;
+            else if (IsHardLevel(e - 1)) trend += ReliefBonus;
+            return Math.Max(0.05, Math.Min(1.0, trend));
+        }
+
         public DifficultySettings Get(LevelDefinition def)
         {
             if (def == null) throw new ArgumentNullException(nameof(def));
