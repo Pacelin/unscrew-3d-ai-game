@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Out of moves</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.card{position:absolute;left:32px;right:32px;box-sizing:border-box;padding:32px;border-radius:28px;background:#FFFFFF;box-shadow:0 8px 0 #C5D2E0;display:flex;flex-direction:column;align-items:stretch;gap:24px}
+.btn{display:flex;align-items:center;justify-content:center;gap:12px;border:0;border-radius:20px;font-family:inherit;font-weight:600;font-size:22px;color:#FFFFFF;height:64px;padding:0 24px}
+</style>
+</helmet>
+<div style="width: 540px; height: 960px; position: relative; overflow: hidden; font-family: 'Fredoka', system-ui, sans-serif; color: #1E2A3B">
+  <dc-import name="Game" hint-size="540px,960px"></dc-import>
+  <div style="position: absolute; inset: 0; background: rgba(16,24,40,0.55)"></div>
+
+  <div class="card" style="top: 200px">
+    <div style="display: flex; justify-content: center; margin-top: -80px">
+      <div style="width: 96px; height: 96px; border-radius: 999px; background: #FFFFFF; box-shadow: 0 6px 0 #C5D2E0; display: flex; align-items: center; justify-content: center">
+        <svg width="64" height="64" viewBox="0 0 56 56" aria-hidden="true"><circle cx="28" cy="28" r="20" fill="#2A3444" stroke="#9DB1C7" stroke-width="4"></circle><path d="M20 20l16 16M36 20L20 36" stroke="#D93A45" stroke-width="5" stroke-linecap="round"></path></svg>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+      <h1 style="margin: 0; font-size: 44px; font-weight: 700; color: #D93A45; line-height: 1.1">Out of moves!</h1>
+      <p style="margin: 0; font-size: 16px; font-weight: 500; color: #4A5568; text-align: center">No bolt can go to a box or a hole.<br>Add a hole to keep going.</p>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <button class="btn" style="background: #2F80ED; box-shadow: 0 6px 0 #1E5DB3; justify-content: space-between">
+        <span style="display: flex; align-items: center; gap: 12px">
+          <svg width="36" height="36" viewBox="0 0 56 56" aria-hidden="true"><circle cx="26" cy="30" r="18" fill="#2A3444" stroke="#FFFFFF" stroke-width="4"></circle><circle cx="42" cy="14" r="10" fill="#1F9D55" stroke="#FFFFFF" stroke-width="2"></circle><path d="M42 9v10M37 14h10" stroke="#FFFFFF" stroke-width="3" stroke-linecap="round"></path></svg>
+          Use +1 Hole
+        </span>
+        <span style="height: 32px; padding: 0 12px; border-radius: 999px; background: rgba(255,255,255,0.22); font-size: 18px; display: flex; align-items: center">×1</span>
+      </button>
+      <button class="btn" style="background: #1F9D55; box-shadow: 0 6px 0 #15703C; justify-content: space-between">
+        <span>Continue</span>
+        <span style="height: 40px; padding: 0 12px 0 6px; border-radius: 999px; background: rgba(0,0,0,0.18); display: flex; align-items: center; gap: 8px">
+          <svg width="28" height="28" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="#FFC233" stroke="#D99A0B" stroke-width="3"></circle><rect x="15" y="10" width="6" height="16" rx="3" fill="#D99A0B"></rect></svg>
+          100
+        </span>
+      </button>
+      <button class="btn" style="background: transparent; color: #1E2A3B; height: 48px; font-size: 20px; text-decoration: underline">Restart level</button>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":540,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

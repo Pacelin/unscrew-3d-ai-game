@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Booster unlocked</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.card{position:absolute;left:32px;right:32px;box-sizing:border-box;padding:32px;border-radius:28px;background:#FFFFFF;box-shadow:0 8px 0 #C5D2E0;display:flex;flex-direction:column;align-items:center;gap:24px}
+.btn{display:flex;align-items:center;justify-content:center;gap:12px;border:0;border-radius:20px;font-family:inherit;font-weight:600;font-size:22px;color:#FFFFFF;height:64px;padding:0 24px;width:100%}
+</style>
+</helmet>
+<div style="width: 540px; height: 960px; position: relative; overflow: hidden; font-family: 'Fredoka', system-ui, sans-serif; color: #1E2A3B">
+  <dc-import name="Game" hint-size="540px,960px"></dc-import>
+  <div style="position: absolute; inset: 0; background: rgba(16,24,40,0.55)"></div>
+
+  <div class="card" style="top: 232px">
+    <span style="height: 32px; padding: 0 16px; border-radius: 999px; background: #2F80ED; color: #FFFFFF; font-size: 16px; font-weight: 600; display: flex; align-items: center">New booster</span>
+    <div style="width: 160px; height: 160px; border-radius: 40px; background: #FFE3C2; box-shadow: 0 8px 0 #E8B07A; display: flex; align-items: center; justify-content: center">
+      <svg width="112" height="112" viewBox="0 0 56 56" fill="none" stroke="#9A4500" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 20h26v12H8z"></path><path d="M34 22l12 4-12 4"></path><path d="M16 32l-4 14h8l4-14"></path></svg>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+      <h1 style="margin: 0; font-size: 44px; font-weight: 700; line-height: 1.1">Drill</h1>
+      <p style="margin: 0; font-size: 16px; font-weight: 500; color: #4A5568; text-align: center">Tap the booster, then any highlighted bolt —<br>it comes out even if a part covers it.</p>
+    </div>
+    <span style="height: 40px; padding: 0 16px; border-radius: 999px; background: #E3F5EA; color: #15703C; font-size: 18px; font-weight: 600; display: flex; align-items: center">+1 free</span>
+    <button class="btn" style="background: #1F9D55; box-shadow: 0 6px 0 #15703C">Got it</button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":540,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

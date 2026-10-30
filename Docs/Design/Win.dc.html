@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Level complete</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.card{position:absolute;left:32px;right:32px;box-sizing:border-box;padding:32px;border-radius:28px;background:#FFFFFF;box-shadow:0 8px 0 #C5D2E0;display:flex;flex-direction:column;align-items:stretch;gap:24px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:20px;font-family:inherit;font-weight:600;font-size:22px;color:#FFFFFF;height:64px;padding:0 24px}
+</style>
+</helmet>
+<div style="width: 540px; height: 960px; position: relative; overflow: hidden; font-family: 'Fredoka', system-ui, sans-serif; color: #1E2A3B">
+  <dc-import name="Game" hint-size="540px,960px"></dc-import>
+  <div style="position: absolute; inset: 0; background: rgba(16,24,40,0.55)"></div>
+
+  <div class="card" style="top: 236px">
+    <div style="display: flex; justify-content: center; align-items: flex-end; gap: 8px; margin-top: -88px">
+      <svg width="72" height="72" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.3l-5.8 3.1 1.1-6.5L2.6 9.3l6.5-.9z" fill="#FFC233" stroke="#D99A0B" stroke-width="1.2" stroke-linejoin="round"></path></svg>
+      <svg width="96" height="96" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.3l-5.8 3.1 1.1-6.5L2.6 9.3l6.5-.9z" fill="#FFC233" stroke="#D99A0B" stroke-width="1.2" stroke-linejoin="round"></path></svg>
+      <svg width="72" height="72" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5l2.9 5.9 6.5.9-4.7 4.6 1.1 6.5L12 17.3l-5.8 3.1 1.1-6.5L2.6 9.3l6.5-.9z" fill="#FFC233" stroke="#D99A0B" stroke-width="1.2" stroke-linejoin="round"></path></svg>
+    </div>
+    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px">
+      <h1 style="margin: 0; font-size: 44px; font-weight: 700; text-align: center; line-height: 1.1">Level complete!</h1>
+      <p style="margin: 0; font-size: 16px; font-weight: 500; color: #4A5568">Level 5 · Hard</p>
+    </div>
+    <div style="display: flex; justify-content: center">
+      <div style="height: 72px; padding: 0 24px; border-radius: 999px; background: #FFF4D6; display: flex; align-items: center; gap: 12px">
+        <svg width="44" height="44" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="#FFC233" stroke="#D99A0B" stroke-width="3"></circle><rect x="15" y="10" width="6" height="16" rx="3" fill="#D99A0B"></rect></svg>
+        <span style="font-size: 36px; font-weight: 700">+56</span>
+      </div>
+    </div>
+    <button class="btn" style="background: #1F9D55; box-shadow: 0 6px 0 #15703C">
+      Next level
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+    </button>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":540,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

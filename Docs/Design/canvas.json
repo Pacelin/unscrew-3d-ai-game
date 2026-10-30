@@ -1,0 +1,25 @@
+{
+  "v": 3,
+  "createdOnFiles": {"v": 1, "at": "2026-10-30T10:00:00Z"},
+  "title": "Unscrew 3D — UI screens",
+  "launch": {"view": "canvas"},
+  "pages": [],
+  "boards": {
+    "Main.dc.html": {"x": 0, "y": 0, "w": 1100, "h": 960, "title": "Tokens & layout spec"},
+    "Menu.dc.html": {"x": 1180, "y": 0, "w": 540, "h": 960, "title": "Main menu"},
+    "Game.dc.html": {"x": 1800, "y": 0, "w": 540, "h": 960, "title": "Gameplay HUD", "guides": [{"kind": "columns", "count": 3, "gutter": 16, "margin": 20}]},
+    "Drill.dc.html": {"x": 2420, "y": 0, "w": 540, "h": 960, "title": "HUD — Drill target mode"},
+    "Win.dc.html": {"x": 3040, "y": 0, "w": 540, "h": 960, "title": "Win"},
+    "Lose.dc.html": {"x": 1180, "y": 1400, "w": 540, "h": 960, "title": "Lose — out of moves"},
+    "Shop.dc.html": {"x": 1800, "y": 1400, "w": 540, "h": 960, "title": "Shop", "guides": [{"kind": "columns", "count": 2, "gutter": 16, "margin": 20}]},
+    "Pause.dc.html": {"x": 2420, "y": 1400, "w": 540, "h": 960, "title": "Pause / settings"},
+    "Unlock.dc.html": {"x": 3040, "y": 1400, "w": 540, "h": 960, "title": "Booster unlocked"}
+  },
+  "order": ["Main.dc.html", "Menu.dc.html", "Game.dc.html", "Drill.dc.html", "Win.dc.html", "Lose.dc.html", "Shop.dc.html", "Pause.dc.html", "Unlock.dc.html"],
+  "notes": {
+    "row1": {"x": 0, "y": -300, "text": "Spec, menu and gameplay", "kind": "title1", "maxW": 3580},
+    "row2": {"x": 1180, "y": 1100, "text": "Popups and shop", "kind": "title1", "maxW": 2400},
+    "scale": {"x": 0, "y": 1080, "w": 1000, "size": "m", "fill": "orange", "text": "Artboards are 540×960 = half of the Unity reference canvas 1080×1920 (CanvasScaler, match 0.5). Every px value here ×2 = Unity units. Grid: 8 px. Safe area: content never above y=24 or below y=936."}
+  },
+  "designSystems": []
+}

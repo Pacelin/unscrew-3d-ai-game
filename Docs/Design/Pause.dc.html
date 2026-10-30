@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Paused</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.card{position:absolute;left:32px;right:32px;box-sizing:border-box;padding:32px;border-radius:28px;background:#FFFFFF;box-shadow:0 8px 0 #C5D2E0;display:flex;flex-direction:column;align-items:stretch;gap:24px}
+.btn{display:flex;align-items:center;justify-content:center;gap:12px;border:0;border-radius:20px;font-family:inherit;font-weight:600;font-size:22px;color:#FFFFFF;height:64px;padding:0 24px}
+.row{height:64px;box-sizing:border-box;padding:0 16px;border-radius:20px;background:#F1F5FA;display:flex;align-items:center;gap:12px;font-size:20px;font-weight:600}
+.sw{margin-left:auto;width:64px;height:36px;border-radius:999px;position:relative;border:0;padding:0}
+.knob{position:absolute;top:4px;width:28px;height:28px;border-radius:999px;background:#FFFFFF;box-shadow:0 2px 0 rgba(0,0,0,.2)}
+</style>
+</helmet>
+<div style="width: 540px; height: 960px; position: relative; overflow: hidden; font-family: 'Fredoka', system-ui, sans-serif; color: #1E2A3B">
+  <dc-import name="Game" hint-size="540px,960px"></dc-import>
+  <div style="position: absolute; inset: 0; background: rgba(16,24,40,0.55)"></div>
+
+  <div class="card" style="top: 196px">
+    <h1 style="margin: 0; font-size: 44px; font-weight: 700; text-align: center; line-height: 1.1">Paused</h1>
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <div class="row">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2F80ED" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9z"></path><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"></path></svg>
+        <span>Sound</span>
+        <button class="sw" role="switch" aria-checked="true" aria-label="Sound" style="background: #1F9D55"><span class="knob" style="right: 4px"></span></button>
+      </div>
+      <div class="row">
+        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#2F80ED" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="8" y="3" width="8" height="18" rx="2"></rect><path d="M4 8v8M20 8v8"></path></svg>
+        <span>Vibration</span>
+        <button class="sw" role="switch" aria-checked="false" aria-label="Vibration" style="background: #B6C2D1"><span class="knob" style="left: 4px"></span></button>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 16px">
+      <button class="btn" style="background: #1F9D55; box-shadow: 0 6px 0 #15703C">Resume</button>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+        <button class="btn" style="background: #D35F00; box-shadow: 0 6px 0 #9A4500">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12a8 8 0 1 0 2.4-5.7"></path><path d="M4 4v5h5"></path></svg>
+          Restart
+        </button>
+        <button class="btn" style="background: #FFFFFF; color: #1E2A3B; border: 2px solid #D5DEE8; box-shadow: 0 6px 0 #C5D2E0">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 11l8-7 8 7"></path><path d="M6 10v10h12V10"></path></svg>
+          Home
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":540,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Unscrew UI tokens</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0}
+.h{margin:0;font-size:20px;font-weight:600}
+.cap{font-size:13px;color:#4A5568;font-weight:500}
+.sw{display:flex;flex-direction:column;gap:8px;width:112px}
+.chip{height:56px;border-radius:12px}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;border:0;border-radius:20px;font-family:inherit;font-weight:600;font-size:22px;color:#FFFFFF;height:64px;padding:0 24px}
+</style>
+</helmet>
+<div style="width: 1100px; height: 960px; box-sizing: border-box; padding: 48px; background: #FFFFFF; font-family: 'Fredoka', system-ui, sans-serif; color: #1E2A3B; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 48px; row-gap: 40px; align-content: start">
+  <div style="grid-column: 1 / 3; display: flex; flex-direction: column; gap: 8px">
+    <h1 style="margin: 0; font-size: 40px; font-weight: 700">Unscrew 3D — UI spec</h1>
+    <p style="margin: 0; font-size: 16px; color: #4A5568">Design px ×2 = Unity canvas units (1080×1920, match 0.5). All spacing is a multiple of 8 except 4 / 12 for tight inner gaps.</p>
+  </div>
+
+  <section style="display: flex; flex-direction: column; gap: 16px">
+    <h2 class="h">Colors</h2>
+    <div style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px">
+      <div class="sw"><div class="chip" style="background: #D6E8F7; border: 1px solid #B9D3EA"></div><span class="cap">bg #D6E8F7</span></div>
+      <div class="sw"><div class="chip" style="background: #FFFFFF; border: 1px solid #D5DEE8"></div><span class="cap">panel #FFFFFF</span></div>
+      <div class="sw"><div class="chip" style="background: #1E2A3B"></div><span class="cap">ink #1E2A3B</span></div>
+      <div class="sw"><div class="chip" style="background: #4A5568"></div><span class="cap">muted #4A5568</span></div>
+      <div class="sw"><div class="chip" style="background: #2F80ED"></div><span class="cap">primary #2F80ED</span></div>
+      <div class="sw"><div class="chip" style="background: #1F9D55"></div><span class="cap">success #1F9D55</span></div>
+      <div class="sw"><div class="chip" style="background: #D35F00"></div><span class="cap">warn #D35F00</span></div>
+      <div class="sw"><div class="chip" style="background: #D93A45"></div><span class="cap">danger #D93A45</span></div>
+      <div class="sw"><div class="chip" style="background: #FFC233"></div><span class="cap">coin #FFC233</span></div>
+      <div class="sw"><div class="chip" style="background: rgba(16,24,40,0.55)"></div><span class="cap">scrim 55%</span></div>
+      <div class="sw"><div class="chip" style="background: #2A3444"></div><span class="cap">hole #2A3444</span></div>
+      <div class="sw"><div class="chip" style="background: #E8EEF5"></div><span class="cap">locked #E8EEF5</span></div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 16px">
+    <h2 class="h">Type — Fredoka</h2>
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <div style="display: flex; align-items: baseline; gap: 16px"><span style="font-size: 44px; font-weight: 700">Display 44</span><span class="cap">titles of popups</span></div>
+      <div style="display: flex; align-items: baseline; gap: 16px"><span style="font-size: 32px; font-weight: 600">Title 32</span><span class="cap">level pill, screen titles</span></div>
+      <div style="display: flex; align-items: baseline; gap: 16px"><span style="font-size: 22px; font-weight: 600">Button 22</span><span class="cap">all buttons</span></div>
+      <div style="display: flex; align-items: baseline; gap: 16px"><span style="font-size: 16px; font-weight: 500">Body 16</span><span class="cap">descriptions, labels</span></div>
+      <div style="display: flex; align-items: baseline; gap: 16px"><span style="font-size: 13px; font-weight: 600">Caption 13</span><span class="cap">badges, counters</span></div>
+    </div>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 16px">
+    <h2 class="h">Spacing &amp; radii</h2>
+    <div style="display: flex; align-items: flex-end; gap: 16px">
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><div style="width: 4px; height: 4px; background: #2F80ED"></div><span class="cap">4</span></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><div style="width: 8px; height: 8px; background: #2F80ED"></div><span class="cap">8</span></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><div style="width: 12px; height: 12px; background: #2F80ED"></div><span class="cap">12</span></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><div style="width: 16px; height: 16px; background: #2F80ED"></div><span class="cap">16</span></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><div style="width: 20px; height: 20px; background: #2F80ED"></div><span class="cap">20 edge</span></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><div style="width: 24px; height: 24px; background: #2F80ED"></div><span class="cap">24</span></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><div style="width: 32px; height: 32px; background: #2F80ED"></div><span class="cap">32</span></div>
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 8px"><div style="width: 48px; height: 48px; background: #2F80ED"></div><span class="cap">48</span></div>
+    </div>
+    <div style="display: flex; gap: 16px">
+      <div style="width: 72px; height: 48px; border-radius: 12px; background: #E8EEF5; display: flex; align-items: center; justify-content: center"><span class="cap">r12</span></div>
+      <div style="width: 72px; height: 48px; border-radius: 20px; background: #E8EEF5; display: flex; align-items: center; justify-content: center"><span class="cap">r20</span></div>
+      <div style="width: 72px; height: 48px; border-radius: 28px; background: #E8EEF5; display: flex; align-items: center; justify-content: center"><span class="cap">r28</span></div>
+      <div style="width: 48px; height: 48px; border-radius: 999px; background: #E8EEF5; display: flex; align-items: center; justify-content: center"><span class="cap">pill</span></div>
+    </div>
+    <p class="cap" style="margin: 0">Screen edge 20 · between rows 16 · inside cards 24 (popups 32) · between cards 16 · button height 64 (primary in menu 80) · icon buttons 56 · touch target ≥ 44.</p>
+  </section>
+
+  <section style="display: flex; flex-direction: column; gap: 16px">
+    <h2 class="h">Buttons</h2>
+    <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px">
+      <button class="btn" style="background: #1F9D55; box-shadow: 0 6px 0 #15703C">Primary go</button>
+      <button class="btn" style="background: #2F80ED; box-shadow: 0 6px 0 #1E5DB3">Booster / info</button>
+      <button class="btn" style="background: #D35F00; box-shadow: 0 6px 0 #9A4500">Restart</button>
+      <button class="btn" style="background: #FFFFFF; color: #1E2A3B; box-shadow: 0 6px 0 #C5D2E0; border: 2px solid #D5DEE8">Secondary</button>
+      <button class="btn" style="background: #E8EEF5; color: #4A5568; box-shadow: 0 6px 0 #C5D2E0">Disabled</button>
+      <button class="btn" style="background: transparent; color: #1E2A3B; text-decoration: underline; height: 48px">Tertiary link</button>
+    </div>
+    <p class="cap" style="margin: 0">3D edge: shadow 0 6px 0 (darker 25%), pressed = translateY(4px) + shadow 2px, scale 0.96. Label + icon gap 8, horizontal padding 24.</p>
+  </section>
+
+  <section style="grid-column: 1 / 3; display: flex; flex-direction: column; gap: 12px">
+    <h2 class="h">Gameplay zones (y in design px, 540×960)</h2>
+    <div style="display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px">
+      <div style="padding: 12px; border-radius: 12px; background: #E8EEF5"><b>0–24</b><br><span class="cap">safe-area inset</span></div>
+      <div style="padding: 12px; border-radius: 12px; background: #E8EEF5"><b>24–80</b><br><span class="cap">top bar, h56</span></div>
+      <div style="padding: 12px; border-radius: 12px; background: #E8EEF5"><b>104–168</b><br><span class="cap">boxes, 3×156 gap16</span></div>
+      <div style="padding: 12px; border-radius: 12px; background: #E8EEF5"><b>184–236</b><br><span class="cap">holes Ø52 gap12</span></div>
+      <div style="padding: 12px; border-radius: 12px; background: #E8EEF5"><b>252–760</b><br><span class="cap">3D model fit area</span></div>
+      <div style="padding: 12px; border-radius: 12px; background: #E8EEF5"><b>776–936</b><br><span class="cap">booster panel h160</span></div>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1100,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>
