@@ -6,7 +6,9 @@ namespace Unscrew.Game
 {
     /// <summary>
     /// Pointer input over the model: a drag orbits the model, a short press without movement is a tap.
-    /// Taps raycast only the "Bolt" layer; whether the bolt can be removed is decided by Core (IBoard), not by visibility.
+    /// Taps raycast all colliders; the tap counts only when the closest hit is a bolt head, so attached
+    /// parts occlude bolts behind them (no taps through the model). Whether the bolt can be removed
+    /// is decided by Core (IBoard), not by visibility.
     /// Uses the legacy Input Manager (mouse API also covers single touch on mobile).
     /// </summary>
     public sealed class BoardInput : MonoBehaviour
@@ -33,13 +35,6 @@ namespace Unscrew.Game
         private bool _dragging;
         private Vector2 _pressPos;
         private Vector2 _lastPos;
-        private int _boltMask;
-        private readonly RaycastHit[] _hits = new RaycastHit[16];
-
-        private void Awake()
-        {
-            _boltMask = LayerMask.GetMask(LevelView.BoltLayerName);
-        }
 
         private void Update()
         {
@@ -74,25 +69,13 @@ namespace Unscrew.Game
         private void Tap(Vector2 screenPos)
         {
             var ray = cam.ScreenPointToRay(screenPos);
-            if (!VisibleBoltsOnly)
-            {
-                if (!Physics.Raycast(ray, out var hit, 1000f, _boltMask, QueryTriggerInteraction.Collide)) return;
-                var bolt = hit.collider.GetComponentInParent<BoltView>();
-                if (bolt != null && !bolt.Detached) BoltTapped?.Invoke(bolt.Id);
-                return;
-            }
-            int n = Physics.RaycastNonAlloc(ray, _hits, 1000f, _boltMask, QueryTriggerInteraction.Collide);
-            BoltView best = null;
-            float bestDist = float.MaxValue;
-            for (int i = 0; i < n; i++)
-            {
-                if (_hits[i].distance >= bestDist) continue;
-                var bolt = _hits[i].collider.GetComponentInParent<BoltView>();
-                if (bolt == null || bolt.Detached || !levelView.IsBoltVisible(bolt, cam)) continue;
-                best = bolt;
-                bestDist = _hits[i].distance;
-            }
-            if (best != null) BoltTapped?.Invoke(best.Id);
+            // The closest hit along the ray decides: parts occlude bolts behind them,
+            // so a tap counts only when it lands directly on a bolt head.
+            if (!Physics.Raycast(ray, out var hit, 1000f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)) return;
+            var bolt = hit.collider.GetComponentInParent<BoltView>();
+            if (bolt == null || bolt.Detached) return;
+            if (VisibleBoltsOnly && !levelView.IsBoltVisible(bolt, cam)) return;
+            BoltTapped?.Invoke(bolt.Id);
         }
 
         private static bool IsOverUi()

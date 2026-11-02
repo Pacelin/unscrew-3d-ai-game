@@ -25,6 +25,11 @@ namespace Unscrew.Game
 
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
+        /// <summary>Head height as a fraction of the mesh height (measured radial profile of the bolt meshes).</summary>
+        private const float HeadFraction = 0.4f;
+        /// <summary>Tap target oversize on top of the measured head size.</summary>
+        private const float HeadTapMargin = 1.15f;
+
         private Renderer _renderer;
         private Collider _collider;
         private Transform _meshT;
@@ -51,12 +56,17 @@ namespace Unscrew.Game
             var headMesh = new Vector3(b.center.x, b.max.y - b.size.y * 0.25f, b.center.z);
             HeadOffsetLocal = transform.InverseTransformPoint(meshT.TransformPoint(headMesh));
 
-            var sphere = meshT.gameObject.AddComponent<SphereCollider>();
-            sphere.center = b.center;
-            // A bit larger than the head so taps on a small screen are forgiving.
-            sphere.radius = Mathf.Max(b.extents.x, b.extents.z) * 1.7f;
+            // Tap target: the head only, never the thread below it. Measured on the bolt meshes
+            // (Bolts/Prefabs): the head is the widest part (extents.x/z) and occupies the top ~40%
+            // of the mesh height, so a box fitted to it clicks exactly on the visible head.
+            float headHeight = b.size.y * HeadFraction;
+            float headRadius = Mathf.Max(b.extents.x, b.extents.z);
+            var box = meshT.gameObject.AddComponent<BoxCollider>();
+            box.center = new Vector3(b.center.x, b.max.y - headHeight * 0.5f, b.center.z);
+            // Slightly larger than the head so taps on a small screen are forgiving.
+            box.size = new Vector3(headRadius * 2f * HeadTapMargin, headHeight * HeadTapMargin, headRadius * 2f * HeadTapMargin);
             meshT.gameObject.layer = boltLayer;
-            _collider = sphere;
+            _collider = box;
         }
 
         /// <summary>Leaves the model: no more taps, parented to <paramref name="parent"/> keeping the world pose.</summary>
