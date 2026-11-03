@@ -31,6 +31,12 @@ namespace Unscrew.Game
         /// <summary>Raised with the bolt id under a tap.</summary>
         public event Action<int> BoltTapped;
 
+        /// <summary>
+        /// QA seam (DebugAutoplay input campaign): injects a tap at a screen position exactly where a
+        /// finger would land, so the bot goes through the same raycast gate as a real tap.
+        /// </summary>
+        public void SimulateTap(Vector2 screenPos) => Tap(screenPos);
+
         private bool _pressed;
         private bool _dragging;
         private Vector2 _pressPos;

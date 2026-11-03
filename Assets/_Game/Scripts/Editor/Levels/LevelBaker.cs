@@ -45,6 +45,21 @@ namespace Unscrew.Editor.Levels
         /// </summary>
         public static bool ApplyHeadLift = true;
 
+        /// <summary>
+        /// Rule 3 "the head must be tappable": a bolt whose head cannot be hit from any player pose (yaw x pitch range)
+        /// gets the parts that seal it added as blockers, so Core never offers it before the sealers fall and the head
+        /// actually becomes clickable. Matches the runtime input gate (BoardInput.Tap): raycast against everything,
+        /// the closest hit must be the head box (or another bolt's head — that one leaves first). Sealer search and the
+        /// per-order verification run with queriesHitBackfaces = false, exactly like gameplay.
+        /// </summary>
+        public static bool ApplyVisibilityRule = true;
+
+        /// <summary>Rule 3: a bolt counts as visible when at least this many poses hit the head box.</summary>
+        public static int VisibleMinPoses = 3;
+
+        /// <summary>Rule 3 camera distance as a multiple of the model bounding radius.</summary>
+        public static float VisibilityCamRadius = 3f;
+
         // Screw004 mesh: long axis is local +Y, the head is at the top (max Y), the shaft goes down
         // to min Y. The bolt prefab rotates the mesh by 90 deg around X, so "outwards" == bolt transform.forward.
 
@@ -208,6 +223,10 @@ namespace Unscrew.Editor.Levels
             public List<int> liftFallbacks = new List<int>();
             /// <summary>Bolts lifted although the lift breaks a plausibility check (bake-3 fallbacks, lifted by the designer's decision).</summary>
             public List<int> forcedLifts = new List<int>();
+            /// <summary>Rule 3: bolts not visible from any player pose and the parts that sealed them (added as blockers).</summary>
+            public Dictionary<int, List<int>> visibilitySealers = new Dictionary<int, List<int>>();
+            /// <summary>Rule 3: bolts that stay untappable even with their sealers removed (never written as fixed).</summary>
+            public List<(int bolt, string diag)> visibilityViolations = new List<(int, string)>();
             public List<string> brokenCycles = new List<string>();
             public int overridesApplied;
             public int blockedBolts;
@@ -245,6 +264,8 @@ namespace Unscrew.Editor.Levels
                 var model = root.transform.Find("Assembly/Model");
                 var colliderToPart = new Dictionary<Collider, int>();
                 var partColliders = new Dictionary<int, List<Collider>>();
+                var modelBounds = new Bounds(root.transform.position, Vector3.zero);
+                bool boundsInit = false;
                 foreach (var p in src.parts)
                 {
                     var partT = model.GetChild(p.childIndex);
@@ -257,6 +278,8 @@ namespace Unscrew.Editor.Levels
                         mc.convex = false;
                         colliderToPart[mc] = p.id;
                         partColliders[p.id].Add(mc);
+                        if (!boundsInit) { modelBounds = mc.bounds; boundsInit = true; }
+                        else modelBounds.Encapsulate(mc.bounds);
                     }
                 }
                 Physics.SyncTransforms();
@@ -268,6 +291,13 @@ namespace Unscrew.Editor.Levels
                 probeGo.transform.position = new Vector3(1e4f, 1e4f, 1e4f);
                 var probe = probeGo.AddComponent<SphereCollider>();
 
+                int boltLayer = LayerMask.NameToLayer("Bolt");
+                if (boltLayer < 0) boltLayer = 8;
+                var geometries = new BoltGeometry[src.bolts.Length];
+                var boltBoxes = new Collider[src.bolts.Length];
+
+                // Phase 1: geometry, rule 1 headLift (the transform moves exactly like the runtime view does),
+                // and the tap box replicating BoltView.Init — the target of the rule 3 visibility probes.
                 foreach (var b in src.bolts)
                 {
                     var boltT = root.transform.Find(b.nodePath);
@@ -278,7 +308,7 @@ namespace Unscrew.Editor.Levels
                     result.minHeadHeight = Mathf.Min(result.minHeadHeight, g.headHeight); result.maxHeadHeight = Mathf.Max(result.maxHeadHeight, g.headHeight);
 
                     // Rule 1: head not inside the owner mesh. A violating head is lifted outwards along the axis
-                    // (headLift) before the sweep; the check is repeated on the lifted position.
+                    // (headLift); the check is repeated on the lifted position.
                     var owner = partColliders[b.ownerId];
                     var original = LevelValidator.CheckHead(g, owner);
                     if (original != null)
@@ -301,11 +331,33 @@ namespace Unscrew.Editor.Levels
                         violation.level = number; violation.boltId = b.id; violation.ownerPartId = b.ownerId;
                         result.headViolations.Add(violation);
                     }
+                    geometries[b.id] = g;
+                    if (def.bolts[b.id].headLift > 0f) boltT.position += g.axis * def.bolts[b.id].headLift;
+
+                    var bmf = boltT.GetComponentInChildren<MeshFilter>();
+                    var mb = bmf.sharedMesh.bounds;
+                    float headH = mb.size.y * 0.4f;
+                    float headR = Mathf.Max(mb.extents.x, mb.extents.z);
+                    var box = bmf.gameObject.AddComponent<BoxCollider>();
+                    box.center = new Vector3(mb.center.x, mb.max.y - headH * 0.5f, mb.center.z);
+                    box.size = new Vector3(headR * 2f * 1.15f, headH * 1.15f, headR * 2f * 1.15f);
+                    bmf.gameObject.layer = boltLayer;
+                    boltBoxes[b.id] = box;
+                }
+                Physics.SyncTransforms();
+
+                float camRadius = (boundsInit ? modelBounds.extents.magnitude : 10f) * VisibilityCamRadius;
+
+                // Phase 2: rule 2 sweep (geometry only) + rule 3 visibility (against parts and bolt boxes).
+                foreach (var b in src.bolts)
+                {
+                    var g = geometries[b.id];
 
                     // Rule 2: the unscrewing path must be clear.
                     GetSweep(g, out var origin, out float radius, out float distance);
                     var hits = new Dictionary<int, float>();
-                    int count = physics.SphereCast(origin, radius, g.axis, buffer, distance, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+                    int sweepMask = Physics.DefaultRaycastLayers & ~(1 << boltLayer);
+                    int count = physics.SphereCast(origin, radius, g.axis, buffer, distance, sweepMask, QueryTriggerInteraction.Ignore);
                     if (count == buffer.Length) Debug.LogWarning($"[LevelBaker] Level {number} bolt {b.id}: sweep hit buffer full");
                     for (int i = 0; i < count; i++)
                     {
@@ -326,7 +378,34 @@ namespace Unscrew.Editor.Levels
                         if (!hits.TryGetValue(part, out float old) || d < old) hits[part] = d;
                     }
                     result.rawHits[b.id] = hits;
-                    def.bolts[b.id].blockingPartIds = hits.Keys.OrderBy(k => k).ToArray();
+
+                    // Rule 3: the head must be tappable from some player pose. Invisible bolts are sealed by
+                    // parts that do not intersect the unscrewing path; those become extra blockers.
+                    var blockers = new List<int>();
+                    if (ApplyVisibilityRule)
+                    {
+                        bool oldQ = Physics.queriesHitBackfaces;
+                        Physics.queriesHitBackfaces = false; // the runtime tap raycast does not hit backfaces
+                        try
+                        {
+                            var disabled = new HashSet<int>();
+                            var sealers = FindVisibilitySealers(physics, g, camRadius, b.ownerId, partColliders, colliderToPart, disabled, boltBoxes, b.id, buffer);
+                            if (sealers != null)
+                            {
+                                if (sealers.Count > 0)
+                                {
+                                    result.visibilitySealers[b.id] = sealers;
+                                    blockers.AddRange(sealers);
+                                }
+                            }
+                            else
+                            {
+                                result.visibilityViolations.Add((b.id, $"no pose hits the head, no sealer found (owner part {b.ownerId}?)"));
+                            }
+                        }
+                        finally { Physics.queriesHitBackfaces = oldQ; }
+                    }
+                    def.bolts[b.id].blockingPartIds = hits.Keys.Union(blockers).OrderBy(k => k).ToArray();
                 }
             }
             finally
@@ -340,6 +419,11 @@ namespace Unscrew.Editor.Levels
 
             result.blockedBolts = def.bolts.Count(b => b.blockingPartIds.Length > 0);
             result.valid = Simulate(def, out result.depth, out result.startAccessible);
+            if (ApplyVisibilityRule && result.valid)
+            {
+                ValidateVisibility(def, result);
+                if (result.visibilityViolations.Count > 0) result.valid = false;
+            }
 
             if (write)
             {
@@ -428,6 +512,229 @@ namespace Unscrew.Editor.Levels
             foreach (var u in edges.Keys.OrderBy(k => k))
                 if (!state.ContainsKey(u) && Dfs(u)) return found;
             return null;
+        }
+
+        // ---------------------------------------------------------------- rule 3: visibility
+
+        /// <summary>Player-reachable pitch values (LevelView min/max), mapped to camera elevation as -pitch.</summary>
+        static readonly int[] VisibilityPitch = { 35, 30, 15, 0, -15, -30, -45, -60 };
+
+        /// <summary>Tap points across the head disk, as fractions of the box half-width (mirrors DebugAutoplay).</summary>
+        static readonly Vector2[] VisibilityOffsets =
+        {
+            new Vector2(0f, 0f), new Vector2(0.55f, 0f), new Vector2(-0.55f, 0f), new Vector2(0f, 0.55f), new Vector2(0f, -0.55f),
+            new Vector2(0.38f, 0.38f), new Vector2(-0.38f, 0.38f), new Vector2(0.38f, -0.38f), new Vector2(-0.38f, -0.38f),
+        };
+
+        /// <summary>
+        /// A pose counts when the closest hit at one of the disk tap points is the bolt's OWN tap box. A bolt covered
+        /// only by other bolts is an order property (they leave first — see ValidateVisibility), not visibility.
+        /// Owner-part hits never count. Returns true when at least <see cref="VisibleMinPoses"/> poses hit;
+        /// blockCounts gets how many tap-point rays each non-owner part blocked (for sealer selection).
+        /// </summary>
+        static bool ProbeVisible(PhysicsScene physics, BoltGeometry g, float camRadius, int ownerPartId, HashSet<int> disabledParts,
+            Dictionary<int, List<Collider>> partColliders, Dictionary<Collider, int> colliderToPart, Collider ownBox, RaycastHit[] buffer,
+            out Dictionary<int, int> blockCounts)
+        {
+            blockCounts = new Dictionary<int, int>();
+            int boltLayer = ownBox.gameObject.layer;
+            int mask = (1 << 0) | (1 << boltLayer);
+            int okPoses = 0;
+            var head = g.headCenter;
+            float offR = g.headRadius * 1.15f * 0.55f;
+            foreach (var pitch in VisibilityPitch)
+            {
+                float e = -pitch;
+                for (int yaw = 0; yaw < 360; yaw += 10)
+                {
+                    var q = Quaternion.Euler(e, yaw, 0f);
+                    var dir = q * Vector3.back; // head -> camera
+                    var origin = head + dir * camRadius;
+                    bool poseOk = false;
+                    for (int t = 0; t < VisibilityOffsets.Length && !poseOk; t++)
+                    {
+                        var o = origin + (q * Vector3.right * VisibilityOffsets[t].x + q * Vector3.up * VisibilityOffsets[t].y) * offR;
+                        int n = physics.Raycast(o, -dir, buffer, camRadius * 2f, mask, QueryTriggerInteraction.Ignore);
+                        int bi = -1; float bd = float.MaxValue;
+                        for (int i = 0; i < n; i++) if (buffer[i].distance < bd) { bd = buffer[i].distance; bi = i; }
+                        if (bi < 0) continue;
+                        var col = buffer[bi].collider;
+                        if (col == ownBox) { poseOk = true; break; }
+                        // Another bolt's head in front does NOT count: it may leave before this bolt is needed,
+                        // after which a part could seal it (the campaign deadlocks). Only the own box counts;
+                        // FindVisibilitySealers disables other bolts' boxes when searching for part sealers.
+                        if (col == null || !colliderToPart.TryGetValue(col, out int pid) || pid == ownerPartId || disabledParts.Contains(pid)) continue;
+                        blockCounts[pid] = blockCounts.TryGetValue(pid, out var c) ? c + 1 : 1;
+                    }
+                    if (poseOk) okPoses++;
+                }
+            }
+            return okPoses >= VisibleMinPoses;
+        }
+
+        /// <summary>
+        /// Finds the parts that seal the bolt from every player pose: greedily disables the part blocking the most tap
+        /// rays and re-probes until the head becomes visible. Returns the sealer list (empty = visible as-is), null when
+        /// no part is responsible (head unreachable for another reason). Disabled colliders are always restored.
+        /// </summary>
+        static List<int> FindVisibilitySealers(PhysicsScene physics, BoltGeometry g, float camRadius, int ownerPartId,
+            Dictionary<int, List<Collider>> partColliders, Dictionary<Collider, int> colliderToPart, HashSet<int> disabledParts,
+            Collider[] boltBoxes, int boltId, RaycastHit[] buffer)
+        {
+            var sealers = new List<int>();
+            var disabledNow = new List<int>();
+            // Other bolts may leave before this bolt is needed; search for PART sealers in a scene without them,
+            // then restore. (Which bolts leave first is an order property, verified by ValidateVisibility.)
+            var boxesReenabled = new List<Collider>();
+            try
+            {
+                foreach (var bx in boltBoxes)
+                    if (bx != null && bx != boltBoxes[boltId] && bx.enabled) { bx.enabled = false; boxesReenabled.Add(bx); }
+                Physics.SyncTransforms();
+                for (int guard = 0; guard < 64; guard++)
+                {
+                    bool visible = ProbeVisible(physics, g, camRadius, ownerPartId, disabledParts, partColliders, colliderToPart, boltBoxes[boltId], buffer, out var blockCounts);
+                    if (visible) return sealers;
+                    int best = -1, bestN = 0;
+                    foreach (var kv in blockCounts)
+                        if (kv.Value > bestN) { bestN = kv.Value; best = kv.Key; }
+                    if (best < 0) return null; // no part blocks: sealed by geometry the ray model cannot express
+                    sealers.Add(best);
+                    disabledParts.Add(best);
+                    disabledNow.Add(best);
+                    foreach (var c in partColliders[best]) c.enabled = false;
+                    Physics.SyncTransforms();
+                }
+                return null;
+            }
+            finally
+            {
+                foreach (var bx in boxesReenabled) bx.enabled = true;
+                foreach (var p in disabledNow)
+                {
+                    disabledParts.Remove(p);
+                    foreach (var c in partColliders[p]) c.enabled = true;
+                }
+                Physics.SyncTransforms();
+            }
+        }
+
+        /// <summary>
+        /// Post-cycle-break verification: replay a valid removal order (waves of accessible bolts) and check that every
+        /// bolt is visible in the scene where the parts released before it are gone. Fills result.visibilityViolations.
+        /// </summary>
+        static void ValidateVisibility(LevelDefinition def, BakeResult result)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{SourcePrefabDir}/Level_{def.number:00}.prefab");
+            var scene = EditorSceneManager.NewPreviewScene();
+            bool oldBackfaces = Physics.queriesHitBackfaces;
+            try
+            {
+                Physics.queriesHitBackfaces = false; // runtime tap semantics
+                var root = (GameObject)UnityEngine.Object.Instantiate(prefab);
+                SceneManager.MoveGameObjectToScene(root, scene);
+                root.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+
+                var model = root.transform.Find("Assembly/Model");
+                var src = LoadSource(def.number);
+                var colliderToPart = new Dictionary<Collider, int>();
+                var partColliders = new Dictionary<int, List<Collider>>();
+                var modelBounds = new Bounds(root.transform.position, Vector3.zero);
+                bool boundsInit = false;
+                foreach (var p in src.parts)
+                {
+                    var partT = model.GetChild(p.childIndex);
+                    partColliders[p.id] = new List<Collider>();
+                    foreach (var mf in partT.GetComponentsInChildren<MeshFilter>())
+                    {
+                        if (mf.sharedMesh == null) continue;
+                        var mc = mf.gameObject.AddComponent<MeshCollider>();
+                        mc.sharedMesh = mf.sharedMesh;
+                        mc.convex = false;
+                        colliderToPart[mc] = p.id;
+                        partColliders[p.id].Add(mc);
+                        if (!boundsInit) { modelBounds = mc.bounds; boundsInit = true; }
+                        else modelBounds.Encapsulate(mc.bounds);
+                    }
+                }
+
+                int boltLayer = LayerMask.NameToLayer("Bolt");
+                if (boltLayer < 0) boltLayer = 8;
+                var geometries = new BoltGeometry[def.bolts.Length];
+                var boltBoxes = new Collider[def.bolts.Length];
+                foreach (var b in def.bolts)
+                {
+                    var boltT = root.transform.Find(src.bolts[b.id].nodePath);
+                    if (boltT == null) throw new Exception($"Level {def.number}: bolt node '{src.bolts[b.id].nodePath}' not found");
+                    var g = GetGeometry(boltT);
+                    if (b.headLift > 0f) boltT.position += g.axis * b.headLift;
+                    geometries[b.id] = Shift(g, b.headLift);
+                    var bmf = boltT.GetComponentInChildren<MeshFilter>();
+                    var mb = bmf.sharedMesh.bounds;
+                    float headH = mb.size.y * 0.4f;
+                    float headR = Mathf.Max(mb.extents.x, mb.extents.z);
+                    var box = bmf.gameObject.AddComponent<BoxCollider>();
+                    box.center = new Vector3(mb.center.x, mb.max.y - headH * 0.5f, mb.center.z);
+                    box.size = new Vector3(headR * 2f * 1.15f, headH * 1.15f, headR * 2f * 1.15f);
+                    bmf.gameObject.layer = boltLayer;
+                    boltBoxes[b.id] = box;
+                }
+                Physics.SyncTransforms();
+                float camRadius = (boundsInit ? modelBounds.extents.magnitude : 10f) * VisibilityCamRadius;
+                var physics = scene.GetPhysicsScene();
+                var buffer = new RaycastHit[512];
+                var disabledParts = new HashSet<int>();
+
+                // Removal: wave by wave; within a wave commit only bolts visible in the current scene, re-probing the
+                // rest after each commit (a part released by a wave-mate may unblock another bolt of the same wave).
+                var removed = new bool[def.bolts.Length];
+                int remaining = def.bolts.Length;
+                for (int guard = 0; guard < 10000 && remaining > 0; guard++)
+                {
+                    var wave = new List<int>();
+                    for (int i = 0; i < removed.Length; i++)
+                        if (!removed[i] && BoardRules.IsAccessible(def, removed, i)) wave.Add(i);
+                    if (wave.Count == 0) break; // stuck: graph-invalid (BreakCycles guarantees this does not happen)
+
+                    var pending = new List<int>(wave);
+                    bool progress = true;
+                    while (pending.Count > 0 && progress)
+                    {
+                        progress = false;
+                        // Parts whose bolts are all removed so far no longer occlude.
+                        foreach (var p in partColliders.Keys)
+                        {
+                            bool released = BoardRules.IsPartReleased(def, removed, p);
+                            if (released && !disabledParts.Contains(p)) { disabledParts.Add(p); foreach (var c in partColliders[p]) c.enabled = false; }
+                            else if (!released && disabledParts.Contains(p)) { disabledParts.Remove(p); foreach (var c in partColliders[p]) c.enabled = true; }
+                        }
+                        Physics.SyncTransforms();
+                        for (int i = pending.Count - 1; i >= 0; i--)
+                        {
+                            bool visible = ProbeVisible(physics, geometries[pending[i]], camRadius, def.bolts[pending[i]].ownerPartId, disabledParts, partColliders, colliderToPart, boltBoxes[pending[i]], buffer, out _);                            if (!visible) continue;
+                            removed[pending[i]] = true;
+                            pending.RemoveAt(i);
+                            remaining--;
+                            progress = true;
+                        }
+                    }
+                    if (pending.Count == 0) continue;
+                    // Nothing pending is visible even though the wave could start: audit the rest with the pending
+                    // bolts forcibly removed, and report each one with what seals it right now.
+                    foreach (var pid in pending)
+                    {
+                        var sealers = FindVisibilitySealers(physics, geometries[pid], camRadius, def.bolts[pid].ownerPartId, partColliders, colliderToPart, disabledParts, boltBoxes, pid, buffer);
+                        result.visibilityViolations.Add((pid, sealers != null ? $"still sealed by [{string.Join(",", sealers)}]" : "no sealer found"));
+                        removed[pid] = true;
+                        remaining--;
+                    }
+                }
+            }
+            finally
+            {
+                Physics.queriesHitBackfaces = oldBackfaces;
+                EditorSceneManager.ClosePreviewScene(scene);
+            }
         }
 
         // ---------------------------------------------------------------- validation
@@ -522,12 +829,12 @@ namespace Unscrew.Editor.Levels
         {
             var sb = new StringBuilder();
             var list = results.ToList();
-            sb.AppendLine("| Уровень | Деталей | Болтов | Заблокировано | Доступно на старте | Глубина | Разорвано рёбер | Нач. пересечений | Нарушений правила 1 | Overrides | Валиден |");
-            sb.AppendLine("| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: |");
+            sb.AppendLine("| Уровень | Деталей | Болтов | Заблокировано | Доступно на старте | Глубина | Разорвано рёбер | Нач. пересечений | Нарушений правила 1 | Запечатано (пр.3) | Нарушений пр.3 | Overrides | Валиден |");
+            sb.AppendLine("| ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | :---: |");
             foreach (var r in list)
             {
                 int bolts = r.definition.bolts.Length;
-                sb.AppendLine($"| {r.number} | {r.definition.parts.Length} | {bolts} | {r.blockedBolts} | {r.startAccessible} ({100f * r.startAccessible / bolts:0}%) | {r.depth} | {r.brokenCycles.Count} | {r.initialOverlaps.Count} | {r.headViolations.Count} | {r.overridesApplied} | {(r.valid ? "да" : "НЕТ")} |");
+                sb.AppendLine($"| {r.number} | {r.definition.parts.Length} | {bolts} | {r.blockedBolts} | {r.startAccessible} ({100f * r.startAccessible / bolts:0}%) | {r.depth} | {r.brokenCycles.Count} | {r.initialOverlaps.Count} | {r.headViolations.Count} | {r.visibilitySealers.Count} | {r.visibilityViolations.Count} | {r.overridesApplied} | {(r.valid ? "да" : "НЕТ")} |");
             }
             sb.AppendLine();
             sb.AppendLine("Разорванные циклы (part P -> part Q: Q блокирует болт детали P):");
@@ -535,6 +842,15 @@ namespace Unscrew.Editor.Levels
             foreach (var r in list)
                 foreach (var c in r.brokenCycles)
                     sb.AppendLine($"- L{r.number:00}: {c}");
+            sb.AppendLine();
+            sb.AppendLine("Правило 3 (болт не тапается ни с одной позы -> деталь-печатник добавлена блокером):");
+            sb.AppendLine();
+            foreach (var r in list)
+                foreach (var v in r.visibilitySealers)
+                    sb.AppendLine($"- L{r.number:00} bolt {v.Key}: sealers [{string.Join(", ", v.Value)}]");
+            foreach (var r in list)
+                foreach (var v in r.visibilityViolations)
+                    sb.AppendLine($"- L{r.number:00} bolt {v.bolt}: VIOLATION {v.diag}");
             return sb.ToString();
         }
     }
