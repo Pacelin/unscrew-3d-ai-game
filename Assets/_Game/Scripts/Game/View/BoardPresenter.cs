@@ -24,8 +24,6 @@ namespace Unscrew.Game
             public bool isPart;
             public int partId;
             public CollectEvent evt;
-            /// <summary>Pause after starting this bolt's flight (Magnet: bolts leave one by one).</summary>
-            public float stagger;
         }
 
         private readonly Queue<Step> _queue = new Queue<Step>();
@@ -67,12 +65,22 @@ namespace Unscrew.Game
             Feedback.Haptic(15);
         }
 
-        /// <summary>Queues the results of one Tap/ForceRemove/booster call.</summary>
+        /// <summary>
+        /// Queues the results of one Tap/ForceRemove/booster call. Bolt flights (BoltToBox/BoltToBuffer) start
+        /// IMMEDIATELY and concurrently — a tap never waits behind box/lid/queue animations. Lifecycle steps
+        /// (falling parts, box completion/activation, buffered bolts moving to a box, extra holes) stay ordered:
+        /// a buffered bolt flies to its slot only after its buffer flight finished and the target box is Ready
+        /// (the slide-in animation played), as the spec requires.
+        /// </summary>
         public void Play(List<CollectEvent> events, List<int> releasedParts, float stagger = 0f)
         {
             for (int i = 0; i < events.Count; i++)
             {
-                _queue.Enqueue(new Step { evt = events[i], stagger = stagger });
+                var e = events[i];
+                if (e.type == CollectEventType.BoltToBox || e.type == CollectEventType.BoltToBuffer)
+                    LaunchBolt(e, stagger);
+                else
+                    _queue.Enqueue(new Step { evt = e });
                 // Parts fall right after the bolt that held them leaves (first event of a move).
                 if (i == 0)
                     foreach (var p in releasedParts) _queue.Enqueue(new Step { isPart = true, partId = p });
@@ -80,6 +88,41 @@ namespace Unscrew.Game
             if (events.Count == 0)
                 foreach (var p in releasedParts) _queue.Enqueue(new Step { isPart = true, partId = p });
             if (!_processing) StartCoroutine(Process());
+        }
+
+        /// <summary>Starts a bolt flight now (or after the magnet stagger) — never behind the lifecycle queue.</summary>
+        private void LaunchBolt(CollectEvent e, float stagger)
+        {
+            if (stagger > 0f) StartCoroutine(Track(LaunchDelayed(e, stagger)));
+            else StartCoroutine(Track(LaunchNow(e)));
+        }
+
+        private IEnumerator LaunchDelayed(CollectEvent e, float delay)
+        {
+            yield return Wait(delay);
+            yield return LaunchNow(e);
+        }
+
+        private IEnumerator LaunchNow(CollectEvent e)
+        {
+            if (e.type == CollectEventType.BoltToBox)
+            {
+                var bolt = levelView.GetBolt(e.boltId);
+                var box = trayView.GetBox(e.boxSlot);
+                if (bolt == null || box == null) yield break;
+                while (!box.Ready) yield return null; // a box sliding in: let the slot appear first
+                var slot = box.ReserveSlot();
+                box.Incoming++;
+                yield return UnscrewAndFly(bolt, slot, box);
+            }
+            else
+            {
+                var bolt = levelView.GetBolt(e.boltId);
+                var hole = trayView.GetHole(e.bufferSlot);
+                if (bolt == null || hole == null) yield break;
+                hole.Bolt = bolt;
+                yield return UnscrewAndFly(bolt, hole.Anchor, null);
+            }
         }
 
         private void ResetQueue()
@@ -119,34 +162,14 @@ namespace Unscrew.Game
             var e = step.evt;
             switch (e.type)
             {
-                case CollectEventType.BoltToBox:
-                {
-                    var bolt = levelView.GetBolt(e.boltId);
-                    var box = trayView.GetBox(e.boxSlot);
-                    if (bolt == null || box == null) yield break;
-                    var slot = box.ReserveSlot();
-                    box.Incoming++;
-                    StartCoroutine(Track(UnscrewAndFly(bolt, slot, box)));
-                    if (step.stagger > 0f) yield return Wait(step.stagger);
-                    break;
-                }
-                case CollectEventType.BoltToBuffer:
-                {
-                    var bolt = levelView.GetBolt(e.boltId);
-                    var hole = trayView.GetHole(e.bufferSlot);
-                    if (bolt == null || hole == null) yield break;
-                    hole.Bolt = bolt;
-                    StartCoroutine(Track(UnscrewAndFly(bolt, hole.Anchor, null)));
-                    if (step.stagger > 0f) yield return Wait(step.stagger);
-                    break;
-                }
                 case CollectEventType.BufferToBox:
                 {
                     var bolt = levelView.GetBolt(e.boltId);
                     var hole = trayView.GetHole(e.bufferSlot);
                     var box = trayView.GetBox(e.boxSlot);
                     if (bolt == null || box == null) yield break;
-                    while (bolt.InFlight) yield return null;
+                    while (bolt.InFlight) yield return null; // the buffer flight finishes first
+                    while (!box.Ready) yield return null;    // and the slot-appear animation
                     if (hole != null && hole.Bolt == bolt) hole.Bolt = null;
                     var slot = box.ReserveSlot();
                     box.Incoming++;
@@ -175,8 +198,10 @@ namespace Unscrew.Game
                 case CollectEventType.BoxActivated:
                 {
                     var box = trayView.SpawnBox(e.boxSlot, e.color, true);
+                    box.Ready = false;
                     Feedback.Play(Sfx.Pop, 0.5f, 1.15f);
                     yield return Slide(box.transform, trayView.BoxLocal(e.boxSlot), Anim.BoxEnterTime);
+                    box.Ready = true;
                     break;
                 }
                 case CollectEventType.BufferSlotAdded:

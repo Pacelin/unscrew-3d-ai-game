@@ -48,6 +48,270 @@ namespace Unscrew.Game
             return $"DebugAutoplay: campaign {from}..{to} started";
         }
 
+        /// <summary>
+        /// Runtime-authoritative rule 3 audit at level start (Flow.State must be Playing). Per bolt:
+        /// tappable through the real input gate → ok; covered only by other bolts (they leave first) → ok;
+        /// otherwise the minimal extra headLift is measured on the live model (other bolts' boxes disabled,
+        /// so the lift clears the PART sealers — the same case the bake cannot model reliably analytically).
+        /// Returns "all tappable" or patch lines "id:+lift". Start state is sufficient: parts only fall,
+        /// so visibility is monotone during play.
+        /// </summary>
+        public static string RuntimeVisibilityAudit()
+        {
+            var boot = GameBootstrap.Instance;
+            if (!Application.isPlaying || boot == null) return "enter Play Mode first";
+            if (boot.Flow.State != FlowState.Playing) return "flow not Playing: " + boot.Flow.State;
+            return AuditCurrentLevel(boot.Flow);
+        }
+
+        /// <summary>Runs the audit on the current level. Patch list lines "id=lift".</summary>
+        public static string AuditCurrentLevel(GameFlow flow)
+        {
+            var level = flow.Presenter.Level;
+            var cam = flow.Camera;
+            Physics.SyncTransforms();
+            var sb = new System.Text.StringBuilder();
+            var otherBoxes = new System.Collections.Generic.List<Collider>();
+            foreach (var b in level.Bolts)
+                if (b != null && !b.Detached)
+                {
+                    var box = b.GetComponentInChildren<BoxCollider>();
+                    if (box != null) otherBoxes.Add(box);
+                }
+            foreach (var bolt in level.Bolts)
+            {
+                if (bolt == null || bolt.Detached) continue;
+                var ownBox = bolt.GetComponentInChildren<BoxCollider>();
+                if (AnyPoseTappable(cam, level, bolt)) continue;
+                // Covered only by other bolts? They are removed before this bolt is needed.
+                var reenabled = new System.Collections.Generic.List<Collider>();
+                foreach (var bx in otherBoxes)
+                    if (bx != ownBox && bx.enabled) { bx.enabled = false; reenabled.Add(bx); }
+                Physics.SyncTransforms();
+                bool partsOnly = AnyPoseTappable(cam, level, bolt);
+                float extra = 0f;
+                if (!partsOnly) extra = FindRuntimeLift(cam, level, bolt);
+                foreach (var bx in reenabled) bx.enabled = true;
+                Physics.SyncTransforms();
+                if (extra > 0f) sb.AppendLine($"bolt {bolt.Id}: +{extra:F3}");
+            }
+            return sb.Length == 0 ? "all tappable" : sb.ToString();
+        }
+
+        /// <summary>
+        /// Repair pass on the LIVE failure scene: every accessible bolt that no pose can tap gets a minimal
+        /// headLift measured right here. Returns "id:+lift; ..." ("" when nothing needs fixing).
+        /// </summary>
+        public static string RepairAccessible(GameFlow flow)
+        {
+            var level = flow.Presenter.Level;
+            var cam = flow.Camera;
+            var session = flow.Session;
+            Physics.SyncTransforms();
+            var sb = new System.Text.StringBuilder();
+            var accessible = new System.Collections.Generic.List<int>();
+            session.Board.GetAccessibleBolts(accessible);
+            foreach (var id in accessible)
+            {
+                if (session.Board.IsRemoved(id)) continue;
+                var bolt = level.GetBolt(id);
+                if (bolt == null || bolt.Detached) continue;
+                if (AnyPoseTappable(cam, level, bolt)) continue;
+                float extra = FindRuntimeLift(cam, level, bolt);
+                if (extra > 0f) sb.Append($"bolt {id}: +{extra:F3}; ");
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>Lift patches collected by the input campaign repair passes ("L#: id:+lift; ...").</summary>
+        public static string RepairLog { get; private set; } = "";
+
+        private static bool AnyPoseTappable(Camera cam, LevelView level, BoltView bolt)
+        {
+            Physics.SyncTransforms();
+            if (TryTapPoint(cam, bolt, out _)) return true;
+            float minPitch = LevelFieldStatic(level, "minPitch", -60f);
+            float maxPitch = LevelFieldStatic(level, "maxPitch", 35f);
+            // pitch via deltas from the ACTUAL pitch — callers may have orbited anywhere
+            float[] targets = { -60f, -45f, -30f, -15f, 0f, 15f, 30f, 35f };
+            float cur = ActualPitch(level);
+            foreach (var t in targets)
+            {
+                float dp = Mathf.Clamp(t, minPitch, maxPitch) - cur;
+                if (Mathf.Abs(dp) > 0.01f) { level.Orbit(0f, dp); cur = Mathf.Clamp(t, minPitch, maxPitch); Physics.SyncTransforms(); }
+                for (int k = 0; k < 36; k++)
+                {
+                    if (TryTapPoint(cam, bolt, out _)) return true;
+                    level.Orbit(10f, 0f);
+                    Physics.SyncTransforms();
+                }
+            }
+            return false;
+        }
+
+        private static float FindRuntimeLift(Camera cam, LevelView level, BoltView bolt)
+        {
+            float step = Mathf.Max(0.1f, bolt.Length * 0.5f);
+            float max = bolt.Length * 20f;
+            float applied = 0f;
+            float found = 0f;
+            for (float t = step; t <= max + 1e-4f; t += step)
+            {
+                bolt.transform.position += bolt.transform.forward * step;
+                applied += step;
+                Physics.SyncTransforms();
+                if (AnyPoseTappable(cam, level, bolt)) { found = t; break; }
+            }
+            // Always restore: the audit must not disturb the scene for the next bolt.
+            bolt.transform.position -= bolt.transform.forward * applied;
+            Physics.SyncTransforms();
+            return found;
+        }
+
+        private static float LevelFieldStatic(LevelView level, string name, float fallback)
+        {
+            var f = typeof(LevelView).GetField(name, System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            return f != null ? (float)f.GetValue(level) : fallback;
+        }
+
+        /// <summary>The model's actual pitch (LevelView._pitch) — the static trackers can drift after arbitrary orbits.</summary>
+        private static float ActualPitch(LevelView level) => LevelFieldStatic(level, "_pitch", -15f);
+
+        /// <summary>Report of the last ordered audit (<see cref="RunOrderedAuditCampaign"/>): per level "ok" or "id:+lift" patches.</summary>
+        public static string OrderedAuditReport { get; private set; } = "";
+
+        /// <summary>
+        /// Runtime-faithful replacement for the analytic ValidateVisibility: replays the removal order on the
+        /// live model — wave by wave; within a wave only bolts tappable through the real input gate commit;
+        /// released parts are disabled; bolts that never become tappable in their wave get a minimal lift
+        /// measured in that exact scene. Bolts covered only by other bolts commit after their coverers.
+        /// </summary>
+        public static string OrderedAuditCurrentLevel(GameFlow flow)
+        {
+            var level = flow.Presenter.Level;
+            var cam = flow.Camera;
+            var session = flow.Session;
+            var def = session.Board.Definition;
+            Physics.SyncTransforms();
+            var sb = new System.Text.StringBuilder();
+            var removed = new bool[def.bolts.Length];
+            var accessible = new System.Collections.Generic.List<int>();
+            int remaining = def.bolts.Length;
+            for (int guard = 0; guard < 10000 && remaining > 0; guard++)
+            {
+                accessible.Clear();
+                session.Board.GetAccessibleBolts(accessible);
+                var wave = new System.Collections.Generic.List<int>();
+                foreach (var id in accessible)
+                    if (!removed[id] && !session.Board.IsRemoved(id)) wave.Add(id);
+                if (wave.Count == 0) break; // graph-stuck (cannot happen on valid data)
+
+                var pending = new System.Collections.Generic.List<int>(wave);
+                bool progress = true;
+                while (pending.Count > 0 && progress)
+                {
+                    progress = false;
+                    // Parts whose bolts are all removed no longer occlude.
+                    for (int p = 0; p < def.parts.Length; p++)
+                    {
+                        bool released = Unscrew.Core.BoardRules.IsPartReleased(def, removed, p);
+                        var pv = p < level.Parts.Length ? level.Parts[p] : null;
+                        if (pv == null) continue;
+                        var col = pv.GetComponent<Collider>();
+                        if (col != null && col.enabled == released) col.enabled = !released;
+                    }
+                    Physics.SyncTransforms();
+                    for (int i = pending.Count - 1; i >= 0; i--)
+                    {
+                        var bolt = level.GetBolt(pending[i]);
+                        if (bolt == null || bolt.Detached || !AnyPoseTappable(cam, level, bolt)) continue;
+                        removed[pending[i]] = true;
+                        pending.RemoveAt(i);
+                        remaining--;
+                        progress = true;
+                        // A tapped bolt leaves the model: its collider stops occluding the rest.
+                        var bx = bolt.GetComponentInChildren<BoxCollider>();
+                        if (bx != null) bx.enabled = false;
+                    }
+                }
+                if (pending.Count == 0) continue;
+                // Never tappable in this wave: minimal lift in this exact scene.
+                foreach (var id in pending)
+                {
+                    var bolt = level.GetBolt(id);
+                    if (bolt == null) { removed[id] = true; remaining--; continue; }
+                    float extra = FindRuntimeLift(cam, level, bolt);
+                    if (extra > 0f) sb.AppendLine($"bolt {id}: +{extra:F3}");
+                    removed[id] = true;
+                    remaining--;
+                    var bx2 = bolt.GetComponentInChildren<BoxCollider>();
+                    if (bx2 != null) bx2.enabled = false;
+                }
+            }
+            return sb.ToString();
+        }
+
+        /// <summary>Audits levels <paramref name="from"/>..<paramref name="to"/> with <see cref="OrderedAuditCurrentLevel"/>.</summary>
+        public static string RunOrderedAuditCampaign(int from = 1, int to = 20)
+        {
+            var boot = GameBootstrap.Instance;
+            if (!Application.isPlaying || boot == null) return "DebugAutoplay: enter Play Mode with Main.unity first";
+            Stop();
+            _routine = boot.StartCoroutine(OrderedAuditCampaign(boot, from, to));
+            return $"DebugAutoplay: ordered audit {from}..{to} started";
+        }
+
+        private static IEnumerator OrderedAuditCampaign(GameBootstrap boot, int from, int to)
+        {
+            IsRunning = true;
+            OrderedAuditReport = "";
+            var flow = boot.Flow;
+            boot.Ui.PlayFromMenu();
+            while (flow.State == FlowState.Loading) yield return null;
+            for (int n = from; n <= to; n++)
+            {
+                flow.StartLevel(n);
+                while (flow.State == FlowState.Loading) yield return null;
+                Physics.SyncTransforms();
+                string res = OrderedAuditCurrentLevel(flow);
+                OrderedAuditReport += $"L{n}: {(res.Length == 0 ? "ok" : res.TrimEnd('\n').Replace("\n", "; "))}\n";
+            }
+            IsRunning = false;
+            Debug.Log("[DebugAutoplay] ordered audit done\n" + OrderedAuditReport);
+        }
+
+        /// <summary>Report of the last <see cref="RunVisibilityAuditCampaign"/>.</summary>
+        public static string AuditReport { get; private set; } = "";
+
+        /// <summary>Audits levels <paramref name="from"/>..<paramref name="to"/> at start state through the real tap gate.</summary>
+        public static string RunVisibilityAuditCampaign(int from = 1, int to = 20)
+        {
+            var boot = GameBootstrap.Instance;
+            if (!Application.isPlaying || boot == null) return "DebugAutoplay: enter Play Mode with Main.unity first";
+            Stop();
+            _routine = boot.StartCoroutine(AuditCampaign(boot, from, to));
+            return $"DebugAutoplay: audit campaign {from}..{to} started";
+        }
+
+        private static IEnumerator AuditCampaign(GameBootstrap boot, int from, int to)
+        {
+            IsRunning = true;
+            AuditReport = "";
+            var flow = boot.Flow;
+            boot.Ui.PlayFromMenu();
+            while (flow.State == FlowState.Loading) yield return null;
+            for (int n = from; n <= to; n++)
+            {
+                flow.StartLevel(n);
+                while (flow.State == FlowState.Loading) yield return null;
+                Physics.SyncTransforms();
+                string res = AuditCurrentLevel(flow);
+                AuditReport += $"L{n}: {(res == "all tappable" ? "ok" : res.TrimEnd('\n').Replace("\n", "; "))}\n";
+            }
+            IsRunning = false;
+            Debug.Log("[DebugAutoplay] audit campaign done\n" + AuditReport);
+        }
+
         /// <summary>One line per finished level of the last <see cref="RunCampaign"/>.</summary>
         public static string CampaignReport { get; private set; } = "";
 
@@ -64,6 +328,7 @@ namespace Unscrew.Game
             if (!Application.isPlaying || boot == null) return "DebugAutoplay: enter Play Mode with Main.unity first";
             Stop();
             CampaignReport = "";
+            RepairLog = "";
             _routine = boot.StartCoroutine(CampaignInput(boot, from, to));
             return $"DebugAutoplay: input campaign {from}..{to} started";
         }
@@ -98,7 +363,13 @@ namespace Unscrew.Game
                     int boltId = policy.ChooseMove(PuzzleSim.FromSession(flow.Session));
                     if (boltId < 0) { note = "policy found no move"; break; }
                     int target = PickTappable(flow, boltId);
-                    if (target < 0) { note = $"no accessible bolt tappable (policy pick {boltId}: {LastTapDiag})"; break; }
+                    if (target < 0)
+                    {
+                        string patch = RepairAccessible(flow);
+                        RepairLog += $"L{n}: {patch}\n";
+                        note = $"no accessible bolt tappable (policy pick {boltId}: {LastTapDiag}); repair: {patch}";
+                        break;
+                    }
                     int before = flow.Session.MovesMade;
                     input.SimulateTap(LastTapScreenPos); // the point ProbePose found for `target`
                     if (flow.Session.MovesMade == before) { note = $"tap on bolt {target} refused by flow"; break; }
@@ -188,9 +459,14 @@ namespace Unscrew.Game
             if (TryTapPoint(flow.Camera, bolt, out _)) return true;
             float minPitch = LevelField(flow, "minPitch", -60f);
             float maxPitch = LevelField(flow, "maxPitch", 35f);
-            for (float pitch = minPitch; pitch <= maxPitch + 0.01f; pitch += 15f)
+            PitchNow = LevelField(flow, "_pitch", PitchNow); // resync: previous picks may have orbited anywhere
+            // Explicit pitch targets: a "-60 + 15k" loop never lands on 35 (maxPitch) — and heads under
+            // overhangs are visible exactly from the steepest below-view, like the bake's grid includes.
+            float[] pitchTargets = { -60f, -45f, -30f, -15f, 0f, 15f, 30f, 35f };
+            for (int pi = 0; pi < pitchTargets.Length; pi++)
             {
-                float dp = Mathf.Clamp(pitch, minPitch, maxPitch) - PitchNow;
+                float pitch = Mathf.Clamp(pitchTargets[pi], minPitch, maxPitch);
+                float dp = pitch - PitchNow;
                 if (Mathf.Abs(dp) > 0.01f) { level.Orbit(0f, dp); PitchNow += dp; Physics.SyncTransforms(); }
                 for (int k = 0; k < 36; k++)
                 {

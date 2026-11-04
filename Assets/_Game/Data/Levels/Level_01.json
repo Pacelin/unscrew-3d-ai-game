@@ -78,13 +78,13 @@
             "id": 7,
             "ownerPartId": 3,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.021
         },
         {
             "id": 8,
             "ownerPartId": 3,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.021
         }
     ],
     "allowedColors": [

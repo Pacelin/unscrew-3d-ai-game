@@ -83,10 +83,10 @@ namespace Unscrew.Game
                 var sb = source.bolts[i];
                 var t = _instance.transform.Find(sb.nodePath);
                 if (t == null) { Debug.LogError($"[LevelView] L{sourceNumber}: bolt {i} '{sb.nodePath}' not found"); continue; }
-                // Rule 1 of the bake: embedded heads are lifted out along the bolt axis. headLift is in level world
-                // units at pivot scale 1, so it is scaled with the pivot if the level is ever scaled.
+                // Bake rule "seat the bolt": headLift is signed — embedded heads are unscrewed out along the bolt
+                // axis, floating bolts are screwed in. headLift is in level world units at pivot scale 1.
                 float lift = def.bolts[i].headLift;
-                if (lift > 0f) t.position += t.forward * (lift * _pivot.lossyScale.x);
+                if (lift != 0f) t.position += t.forward * (lift * _pivot.lossyScale.x);
                 int color = session.GetBoltColor(i);
                 var view = t.gameObject.AddComponent<BoltView>();
                 view.Init(i, color, catalog.GetBoltMaterials(color), boltLayer < 0 ? 0 : boltLayer);

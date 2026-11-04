@@ -5,7 +5,9 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using UnityEditor;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Unscrew.Core;
 
 namespace Unscrew.Editor.Levels
@@ -170,6 +172,45 @@ namespace Unscrew.Editor.Levels
         public static Vector3 ShaftMiddle(LevelBaker.BoltGeometry g) => g.seat - g.axis * (g.shaftLength * 0.5f);
 
         /// <summary>
+        /// Seats the bolt on the owner from its original config position: when the head is embedded (rule 1
+        /// violation) the bolt is unscrewed outwards just enough to clear the surface; when it floats above the
+        /// surface it is screwed in (negative headLift) along the axis until the head touches the surface, keeping
+        /// the shaft anchored — i.e. the thread is as deep inside the owner as the head contact allows.
+        /// </summary>
+        public static LiftResult ComputeSeat(LevelBaker.BoltGeometry g, List<Collider> owner, HeadViolation violation)
+        {
+            if (violation != null) return ComputeHeadLift(g, owner, violation);
+
+            var r = new LiftResult { boltLength = g.length, reportedDepth = 0f, required = 0f };
+            float step = Mathf.Max(0.01f, g.headHeight * 0.1f);
+            float maxIn = g.length * 0.9f;
+            float lastGood = 0f;
+            for (float s = step; s <= maxIn + 1e-4f; s += step)
+            {
+                var gs = LevelBaker.Shift(g, -s);
+                if (!AllOutside(gs, owner)) break;
+                if (!ShaftAnchored(gs, owner)) break;
+                lastGood = s;
+            }
+            if (lastGood <= 0f) return r; // already seated (or cannot move in: keep the original position)
+            // Refine the contact boundary in (lastGood, lastGood + step]: head pressed to the surface minus epsilon.
+            float lo = lastGood, hi = lastGood + step;
+            for (int i = 0; i < 14; i++)
+            {
+                float mid = (lo + hi) * 0.5f;
+                if (AllOutside(LevelBaker.Shift(g, -mid), owner)) lo = mid; else hi = mid;
+            }
+            float lift = -Mathf.Max(0f, lo - LiftEpsilon);
+            if (Mathf.Abs(lift) < 1e-3f) return r;
+            lift = -Mathf.Ceil(Mathf.Abs(lift) * 1000f) / 1000f;
+            r.required = lift;
+            r.lift = lift;
+            r.shaftAnchored = ShaftAnchored(LevelBaker.Shift(g, lift), owner);
+            if (!r.shaftAnchored) r.forcedReason = "shaft not anchored";
+            return r;
+        }
+
+        /// <summary>
         /// For a bolt that violates rule 1, measures the smallest outward shift along the axis that puts all head samples
         /// outside the owner (step search + bisection with the parity test) and adds <see cref="LiftEpsilon"/>.
         /// The search covers <see cref="LiftSearchBase"/> bolt lengths and is extended up to <see cref="LiftSearchMax"/>
@@ -255,6 +296,112 @@ namespace Unscrew.Editor.Levels
             return best == float.MaxValue ? 0f : best;
         }
 
+        [MenuItem("Unscrew/Check Bolt Seating")]
+        public static void SeatingMenu()
+        {
+            Debug.Log("[LevelValidator]\n" + CheckSeatingAll());
+        }
+
+        /// <summary>
+        /// On-demand seating audit over the baked files: per bolt, per level — (a) the head must not intersect the
+        /// owner mesh, (b) the shaft must be anchored inside the owner, (c) the thread must be maximally submerged:
+        /// no remaining screw-in potential beyond <paramref name="potentialTolerance"/>. Runs the same geometry
+        /// the runtime view builds (original config + baked signed headLift). Read-only.
+        /// </summary>
+        public static string CheckSeatingAll(float potentialTolerance = 0.05f)
+        {
+            var sb = new StringBuilder();
+            int total = 0, embedded = 0, unanchored = 0, loose = 0;
+            for (int n = 1; n <= LevelBaker.LevelCount; n++)
+            {
+                string levelReport = CheckSeating(n, potentialTolerance, out int b, out int e, out int u, out int l);
+                total += b; embedded += e; unanchored += u; loose += l;
+                if (e + u + l > 0) sb.Append(levelReport);
+            }
+            sb.Insert(0, $"## Посадка болтов (head на поверхности, резьба утоплена)\n\nПроверено уровней: {LevelBaker.LevelCount}, болтов: {total}. " +
+                          $"Нарушений: шляпка в меши владельца — {embedded}, резьба не во владельце — {unanchored}, посадка не максимальная (> {potentialTolerance}) — {loose}.\n\n");
+            return sb.ToString();
+        }
+
+        /// <summary>Per-level seating audit. Returns a markdown fragment; out params feed the summary.</summary>
+        public static string CheckSeating(int number, float potentialTolerance, out int bolts, out int embedded, out int unanchored, out int loose)
+        {
+            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{LevelBaker.SourcePrefabDir}/Level_{number:00}.prefab");
+            var def = JsonUtility.FromJson<LevelDefinition>(File.ReadAllText(LevelBaker.OutputPath(number)));
+            var sb = new StringBuilder();
+            bolts = def.bolts.Length; embedded = 0; unanchored = 0; loose = 0;
+            var scene = EditorSceneManager.NewPreviewScene();
+            bool oldBackfaces = Physics.queriesHitBackfaces;
+            try
+            {
+                Physics.queriesHitBackfaces = true;
+                var root = (GameObject)UnityEngine.Object.Instantiate(prefab);
+                SceneManager.MoveGameObjectToScene(root, scene);
+                root.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+                var model = root.transform.Find("Assembly/Model");
+                var src = LevelBaker.LoadSource(number);
+                var partColliders = new Dictionary<int, List<Collider>>();
+                foreach (var p in src.parts)
+                {
+                    var partT = model.GetChild(p.childIndex);
+                    partColliders[p.id] = new List<Collider>();
+                    foreach (var mf in partT.GetComponentsInChildren<MeshFilter>())
+                    {
+                        if (mf.sharedMesh == null) continue;
+                        var mc = mf.gameObject.AddComponent<MeshCollider>();
+                        mc.sharedMesh = mf.sharedMesh;
+                        mc.convex = false;
+                        partColliders[p.id].Add(mc);
+                    }
+                }
+                Physics.SyncTransforms();
+                var lines = new List<string>();
+                foreach (var b in def.bolts)
+                {
+                    var boltT = root.transform.Find(src.bolts[b.id].nodePath);
+                    if (boltT == null) continue;
+                    var g = LevelBaker.GetGeometry(boltT);
+                    if (b.headLift != 0f) g = LevelBaker.Shift(g, b.headLift);
+                    var owner = partColliders[b.ownerPartId];
+
+                    var v = CheckHead(g, owner);
+                    bool anchored = ShaftAnchored(g, owner);
+                    // Remaining screw-in potential: the same scan the seater runs (no lift applied twice — pure measure).
+                    float step = Mathf.Max(0.01f, g.headHeight * 0.1f);
+                    float maxIn = g.length * 0.9f;
+                    float potential = 0f;
+                    for (float s = step; s <= maxIn + 1e-4f; s += step)
+                    {
+                        var gs = LevelBaker.Shift(g, -s);
+                        if (!AllOutside(gs, owner) || !ShaftAnchored(gs, owner)) break;
+                        potential = s;
+                    }
+                    if (v != null || !anchored || potential > potentialTolerance)
+                    {
+                        if (v != null) embedded++;
+                        if (!anchored) unanchored++;
+                        if (v == null && potential > potentialTolerance) loose++;
+                        lines.Add($"b{b.id} (владелец {b.ownerPartId}, headLift {b.headLift:0.0##}): " +
+                                  (v != null ? $"шляпка в меши ({v.insideSamples}/{v.totalSamples} точек, глубина {v.depth:0.000})" : "шляпка чиста") +
+                                  (anchored ? "" : "; резьба НЕ во владельце") +
+                                  (v == null && potential > potentialTolerance ? $"; можно закрутить ещё на {potential:0.000}" : ""));
+                    }
+                }
+                if (lines.Count > 0)
+                {
+                    sb.AppendLine($"### L{number:00}: {lines.Count} из {bolts} болтов с нарушениями посадки");
+                    foreach (var l in lines) sb.AppendLine($"- {l}");
+                    sb.AppendLine();
+                }
+            }
+            finally
+            {
+                Physics.queriesHitBackfaces = oldBackfaces;
+                EditorSceneManager.ClosePreviewScene(scene);
+            }
+            return sb.ToString();
+        }
+
         // ---------------------------------------------------------------- report
 
         /// <summary>Initial overlaps deeper than this (world units, ~10% of the head radius) are counted as "deep".</summary>
@@ -299,17 +446,17 @@ namespace Unscrew.Editor.Levels
                         if (!(old.bolts[i].blockingPartIds ?? new int[0]).SequenceEqual(def.bolts[i].blockingPartIds)) diff++;
                     changed = diff.ToString();
                 }
-                sb.AppendLine($"| {r.number} | {bolts} | {blocked} | {start} | {depth} | {r.brokenCycles.Count} | {changed} | {r.initialOverlaps.Count} ({r.initialOverlaps.Count(o => o.depth >= DeepOverlap)}) | {r.originalHeadViolations.Count} → {r.headViolations.Count} | {r.lifts.Values.Count(l => l.lift > 0f)} | {(r.valid ? "да" : "НЕТ")} |");
+                sb.AppendLine($"| {r.number} | {bolts} | {blocked} | {start} | {depth} | {r.brokenCycles.Count} | {changed} | {r.initialOverlaps.Count} ({r.initialOverlaps.Count(o => o.depth >= DeepOverlap)}) | {r.originalHeadViolations.Count} → {r.headViolations.Count} | {r.lifts.Values.Count(l => l.lift != 0f)} | {(r.valid ? "да" : "НЕТ")} |");
             }
             sb.AppendLine();
             sb.AppendLine($"Итого: {totalBolts} болтов, на старте доступно {(before.Count > 0 ? $"{totalOldStart} → " : "")}{totalStart} ({100f * totalStart / totalBolts:0}%), " +
-                          $"разорвано рёбер {totalBroken}, начальных пересечений {totalOverlaps}, нарушений правила 1 {results.Sum(r => r.originalHeadViolations.Count)} → {totalViol}, поднято болтов {results.Sum(r => r.lifts.Values.Count(l => l.lift > 0f))}. " +
+                          $"разорвано рёбер {totalBroken}, начальных пересечений {totalOverlaps}, нарушений правила 1 {results.Sum(r => r.originalHeadViolations.Count)} → {totalViol}, поднято болтов {results.Sum(r => r.lifts.Values.Count(l => l.lift != 0f))}. " +
                           (rebaked ? "Файлы перезаписаны." : "Файлы не перезаписывались («было» = файлы на диске, «стало» = свежий бейк)."));
             sb.AppendLine();
 
             sb.AppendLine("## headLift (исправление правила 1)");
             sb.AppendLine();
-            var lifted = results.SelectMany(r => r.lifts.Where(kv => kv.Value.lift > 0f).Select(kv => (r.number, kv.Key, kv.Value))).ToList();
+            var lifted = results.SelectMany(r => r.lifts.Where(kv => kv.Value.lift != 0f).Select(kv => (r.number, kv.Key, kv.Value))).ToList();
             if (lifted.Count > 0)
             {
                 sb.AppendLine($"Поднято {lifted.Count} болтов: headLift {F(lifted.Min(x => x.Value.lift))}–{F(lifted.Max(x => x.Value.lift))}, " +
@@ -317,8 +464,8 @@ namespace Unscrew.Editor.Levels
                               $"Измеренный lift − (глубина отчёта + ε): от {F(lifted.Min(x => x.Value.lift - x.Value.reportedDepth - LiftEpsilon))} до {F(lifted.Max(x => x.Value.lift - x.Value.reportedDepth - LiftEpsilon))}.");
                 sb.AppendLine();
                 foreach (var r in results)
-                    if (r.lifts.Values.Any(l => l.lift > 0f))
-                        sb.AppendLine($"- L{r.number:00}: " + string.Join(", ", r.lifts.Where(kv => kv.Value.lift > 0f).OrderBy(kv => kv.Key).Select(kv => $"b{kv.Key} {F(kv.Value.lift)}")));
+                    if (r.lifts.Values.Any(l => l.lift != 0f))
+                        sb.AppendLine($"- L{r.number:00}: " + string.Join(", ", r.lifts.Where(kv => kv.Value.lift != 0f).OrderBy(kv => kv.Key).Select(kv => $"b{kv.Key} {F(kv.Value.lift)}")));
                 sb.AppendLine();
             }
             var forced = results.SelectMany(r => r.forcedLifts.Select(id => (r.number, id, r.lifts[id]))).ToList();

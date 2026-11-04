@@ -20,6 +20,8 @@ namespace Unscrew.Game
         public int Incoming { get; set; }
         /// <summary>Bolts that already landed.</summary>
         public int Landed { get; private set; }
+        /// <summary>False while the box is sliding in (BoltActivated): buffered bolts wait so the slot-appear animation finishes first.</summary>
+        public bool Ready { get; set; } = true;
         public Color Tint { get; private set; }
 
         private readonly List<Transform> _slots = new List<Transform>();

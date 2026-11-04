@@ -248,7 +248,7 @@
                 4,
                 9
             ],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 1,
@@ -263,25 +263,27 @@
             "id": 2,
             "ownerPartId": 2,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 4.154
         },
         {
             "id": 3,
             "ownerPartId": 3,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 4.154
         },
         {
             "id": 4,
             "ownerPartId": 4,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 5,
             "ownerPartId": 5,
-            "blockingPartIds": [],
-            "headLift": 0.0
+            "blockingPartIds": [
+                9
+            ],
+            "headLift": -0.019
         },
         {
             "id": 6,
@@ -295,7 +297,7 @@
             "blockingPartIds": [
                 14
             ],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 8,
@@ -304,7 +306,7 @@
                 12,
                 15
             ],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 9,
@@ -313,13 +315,13 @@
                 12,
                 13
             ],
-            "headLift": 0.0
+            "headLift": -0.019
         },
         {
             "id": 10,
             "ownerPartId": 10,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 11,
@@ -327,19 +329,19 @@
             "blockingPartIds": [
                 1
             ],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 12,
             "ownerPartId": 12,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 1.769
         },
         {
             "id": 13,
             "ownerPartId": 13,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 3.856
         },
         {
             "id": 14,
@@ -369,13 +371,13 @@
             "id": 18,
             "ownerPartId": 18,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 19,
             "ownerPartId": 19,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 20,
@@ -383,13 +385,13 @@
             "blockingPartIds": [
                 10
             ],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 21,
             "ownerPartId": 21,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 22,
@@ -397,7 +399,7 @@
             "blockingPartIds": [
                 14
             ],
-            "headLift": 0.0
+            "headLift": -0.018
         },
         {
             "id": 23,
@@ -436,7 +438,7 @@
             "blockingPartIds": [
                 9
             ],
-            "headLift": 0.0
+            "headLift": -0.018
         },
         {
             "id": 28,
@@ -450,43 +452,45 @@
             "id": 29,
             "ownerPartId": 2,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 30,
             "ownerPartId": 3,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 31,
             "ownerPartId": 0,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 32,
             "ownerPartId": 27,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 33,
             "ownerPartId": 13,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 3.258
         },
         {
             "id": 34,
             "ownerPartId": 9,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 0.577
         },
         {
             "id": 35,
             "ownerPartId": 12,
-            "blockingPartIds": [],
-            "headLift": 0.0
+            "blockingPartIds": [
+                14
+            ],
+            "headLift": 3.26
         },
         {
             "id": 36,
@@ -495,13 +499,13 @@
                 2,
                 27
             ],
-            "headLift": 0.0
+            "headLift": -0.019
         },
         {
             "id": 37,
             "ownerPartId": 4,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.018
         },
         {
             "id": 38,
@@ -550,91 +554,91 @@
                 2,
                 3
             ],
-            "headLift": 0.0
+            "headLift": -0.017
         },
         {
             "id": 44,
             "ownerPartId": 21,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 45,
             "ownerPartId": 7,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.009
         },
         {
             "id": 46,
             "ownerPartId": 18,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 47,
             "ownerPartId": 19,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 48,
             "ownerPartId": 20,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 49,
             "ownerPartId": 8,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 50,
             "ownerPartId": 11,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 51,
             "ownerPartId": 2,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 3.856
         },
         {
             "id": 52,
             "ownerPartId": 0,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 4.154
         },
         {
             "id": 53,
             "ownerPartId": 3,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 3.856
         },
         {
             "id": 54,
             "ownerPartId": 27,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 3.856
         },
         {
             "id": 55,
             "ownerPartId": 13,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 3.259
         },
         {
             "id": 56,
             "ownerPartId": 12,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 1.769
         },
         {
             "id": 57,
             "ownerPartId": 9,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 3.558
         },
         {
             "id": 58,
@@ -642,7 +646,7 @@
             "blockingPartIds": [
                 25
             ],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 59,
@@ -672,7 +676,7 @@
             "blockingPartIds": [
                 17
             ],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 63,
@@ -684,7 +688,7 @@
             "id": 64,
             "ownerPartId": 19,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 65,
@@ -693,7 +697,7 @@
                 17,
                 24
             ],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 66,
@@ -702,19 +706,19 @@
                 23,
                 24
             ],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 67,
             "ownerPartId": 7,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 68,
             "ownerPartId": 5,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 69,
@@ -729,37 +733,37 @@
             "id": 70,
             "ownerPartId": 27,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 3.856
         },
         {
             "id": 71,
             "ownerPartId": 0,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 3.856
         },
         {
             "id": 72,
             "ownerPartId": 2,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 73,
             "ownerPartId": 3,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 74,
             "ownerPartId": 13,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 1.471
         },
         {
             "id": 75,
             "ownerPartId": 12,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 1.769
         },
         {
             "id": 76,
@@ -767,7 +771,7 @@
             "blockingPartIds": [
                 13
             ],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 77,
@@ -775,22 +779,23 @@
             "blockingPartIds": [
                 1
             ],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 78,
             "ownerPartId": 21,
             "blockingPartIds": [
                 20,
-                23
+                23,
+                24
             ],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 79,
             "ownerPartId": 19,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 80,
@@ -799,13 +804,13 @@
                 16,
                 25
             ],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 81,
             "ownerPartId": 6,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 82,
@@ -813,7 +818,7 @@
             "blockingPartIds": [
                 3
             ],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 83,
@@ -821,7 +826,7 @@
             "blockingPartIds": [
                 23
             ],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 84,
@@ -833,45 +838,46 @@
             "id": 85,
             "ownerPartId": 0,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 86,
             "ownerPartId": 27,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 87,
             "ownerPartId": 3,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 88,
             "ownerPartId": 2,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": -0.02
         },
         {
             "id": 89,
             "ownerPartId": 13,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 2.962
         },
         {
             "id": 90,
             "ownerPartId": 12,
             "blockingPartIds": [],
-            "headLift": 0.0
+            "headLift": 2.067
         },
         {
             "id": 91,
             "ownerPartId": 9,
             "blockingPartIds": [
-                13
+                13,
+                14
             ],
-            "headLift": 0.0
+            "headLift": -0.017
         },
         {
             "id": 92,
