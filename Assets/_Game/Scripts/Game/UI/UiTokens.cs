@@ -331,8 +331,8 @@ namespace Unscrew.Game
             public const float TutorialBottom = Zone.ModelBottom;
             /// <summary>Booster tip bubble: right above the booster panel (same spot as the tutorial bubble and the toast).</summary>
             public const float TipBottom = Zone.ModelBottom;
-            /// <summary>Fingertip above the booster button center (the hand covers the button, not the model).</summary>
-            public const float TipHandLift = 40f;
+            /// <summary>Fingertip presses the booster button CENTER (hand pivot = fingertip; the rest bob sits up-right).</summary>
+            public const float TipHandLift = 0f;
             /// <summary>The bubble stays inside the content column: at least this far from the frame sides.</summary>
             public const float TipSideInset = Zone.Edge;
             /// <summary>The tip folds away after this many moves in a level (it comes back next level until the booster is used).</summary>

@@ -43,6 +43,9 @@ namespace Unscrew.Game
             Color = color;
             _renderer = GetComponentInChildren<Renderer>(true);
             _renderer.sharedMaterials = materials;
+            // No shadows from bolts: lifted/recessed heads would smear them over the model (design decision).
+            _renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            _renderer.receiveShadows = false;
 
             var mf = _renderer.GetComponent<MeshFilter>();
             var meshT = _renderer.transform;
