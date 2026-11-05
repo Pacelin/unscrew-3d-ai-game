@@ -101,6 +101,8 @@ namespace Unscrew.Game
             flow.OnLevelLoading += OnLevelLoading;
             flow.OnLevelStarted += _ => { player.Continue.ResetForLevel(); hud.Refresh(); curtain.Reveal(); };
             flow.OnMove += hud.Refresh;
+            // Any actual use of a booster (button, lose screen, drill tap) dismisses its tutorial tip for good.
+            flow.OnBoosterUsed += onboarding.MarkTipSeen;
             flow.OnDrillModeChanged += on => { hud.Refresh(); _input.VisibleBoltsOnly = on; };
             flow.OnWin += OnWin;
             flow.OnLose += _ =>

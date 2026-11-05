@@ -42,7 +42,7 @@
             "id": 1,
             "ownerPartId": 0,
             "blockingPartIds": [],
-            "headLift": 0.069
+            "headLift": 0.0
         },
         {
             "id": 2,
@@ -54,7 +54,7 @@
             "id": 3,
             "ownerPartId": 1,
             "blockingPartIds": [],
-            "headLift": 0.039
+            "headLift": 0.0
         },
         {
             "id": 4,
@@ -72,19 +72,19 @@
             "id": 6,
             "ownerPartId": 2,
             "blockingPartIds": [],
-            "headLift": 0.08
+            "headLift": 0.0
         },
         {
             "id": 7,
             "ownerPartId": 3,
             "blockingPartIds": [],
-            "headLift": -0.021
+            "headLift": 0.0
         },
         {
             "id": 8,
             "ownerPartId": 3,
             "blockingPartIds": [],
-            "headLift": -0.021
+            "headLift": 0.0
         }
     ],
     "allowedColors": [

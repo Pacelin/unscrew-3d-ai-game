@@ -25,8 +25,10 @@ namespace Unscrew.Game
         private readonly List<int> _accessible = new List<int>();
         private UiRoot _root;
         private int _targetBolt = -1;
-        private float _retarget;
+        private int _lastMoves = -1;
         private float _time;
+        /// <summary>After a successful tap the finger takes a pause (tap feedback) before pointing at the next bolt.</summary>
+        private float _tapPause;
         private string _shownText;
         private bool _tutorialDone;
         private bool[] _tipSeen;
@@ -104,11 +106,23 @@ namespace Unscrew.Game
         private void ShowTutorial(GameFlow flow)
         {
             var session = flow.Session;
-            if (_targetBolt < 0 || session.Board.IsRemoved(_targetBolt) || (_retarget -= Time.unscaledDeltaTime) <= 0f)
+            // A new successful tap: hide the finger for a beat (press feedback), then point at the next bolt.
+            if (_lastMoves != session.MovesMade)
             {
-                _targetBolt = PickBolt(flow);
-                _retarget = 0.5f;
+                if (_lastMoves >= 0) _tapPause = 1.1f;
+                _lastMoves = session.MovesMade;
+                _targetBolt = -1;
             }
+            if (_tapPause > 0f)
+            {
+                _tapPause -= Time.unscaledDeltaTime;
+                SetVisible(false);
+                return;
+            }
+            // The finger keeps pointing at ONE bolt until that tap lands or the bolt stops being a good target
+            // (taken, blocked again, or its color no longer fits an open box) - no periodic hopping.
+            if (_targetBolt < 0 || !IsValidTarget(flow, _targetBolt))
+                _targetBolt = PickBolt(flow);
             var bolt = flow.Presenter.Level.GetBolt(_targetBolt);
             if (bolt == null || bolt.Detached) { SetVisible(false); return; }
             var cam = flow.Camera;
@@ -124,7 +138,8 @@ namespace Unscrew.Game
             bubbleArrow.gameObject.SetActive(false);
         }
 
-        /// <summary>An accessible bolt whose color has an open box with room, nearest to the screen center.</summary>
+        /// <summary>An accessible bolt whose color has an open box with room AND that is tappable right now
+        /// (the tap ray actually reaches its head at the current pose), nearest to the screen center.</summary>
         private int PickBolt(GameFlow flow)
         {
             var session = flow.Session;
@@ -136,21 +151,50 @@ namespace Unscrew.Game
             float bestD = float.MaxValue;
             foreach (var id in _accessible)
             {
-                int c = session.GetBoltColor(id);
-                bool fits = false;
-                for (int b = 0; b < col.ActiveBoxCount; b++)
-                {
-                    var box = col.GetBox(b);
-                    if (!box.IsEmpty && box.color == c && box.filled < box.capacity) { fits = true; break; }
-                }
-                if (!fits) continue;
+                if (!FitsOpenBox(session, id)) continue;
                 var view = flow.Presenter.Level.GetBolt(id);
-                if (view == null || view.Detached) continue;
+                if (view == null || view.Detached || !IsTappableNow(flow, view)) continue;
                 Vector2 sp = cam.WorldToScreenPoint(view.transform.position);
                 float d = (sp - center).sqrMagnitude;
                 if (d < bestD) { bestD = d; best = id; }
             }
             return best;
+        }
+
+        /// <summary>The tap ray from the camera through the bolt head hits this bolt (no part/another bolt in front).</summary>
+        private static bool IsTappableNow(GameFlow flow, BoltView view)
+        {
+            var cam = flow.Camera;
+            var head = view.transform.TransformPoint(view.HeadOffsetLocal);
+            var sp = cam.WorldToScreenPoint(head);
+            if (sp.z <= 0f) return false;
+            var ray = cam.ScreenPointToRay(new Vector2(sp.x, sp.y));
+            if (!Physics.Raycast(ray, out var hit, 1000f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore)) return false;
+            return hit.collider != null && hit.collider.GetComponentInParent<BoltView>() == view;
+        }
+
+        /// <summary>The bolt is still a valid pointing target: on the board, accessible, fits an open box, tappable now.</summary>
+        private bool IsValidTarget(GameFlow flow, int id)
+        {
+            var session = flow.Session;
+            if (session.Board.IsRemoved(id)) return false;
+            session.Board.GetAccessibleBolts(_accessible);
+            if (!_accessible.Contains(id)) return false;
+            if (!FitsOpenBox(session, id)) return false;
+            var view = flow.Presenter.Level.GetBolt(id);
+            return view != null && !view.Detached && IsTappableNow(flow, view);
+        }
+
+        private bool FitsOpenBox(IGameSession session, int boltId)
+        {
+            int c = session.GetBoltColor(boltId);
+            var col = session.Collector;
+            for (int b = 0; b < col.ActiveBoxCount; b++)
+            {
+                var box = col.GetBox(b);
+                if (!box.IsEmpty && box.color == c && box.filled < box.capacity) return true;
+            }
+            return false;
         }
 
         private void ShowTip(BoosterType type, RectTransform button)
